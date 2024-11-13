@@ -206,6 +206,26 @@ GO
 SET ANSI_PADDING OFF
 GO
 ```
+```
+CREATE TABLE dbo.Z_PrezziTV
+	(
+	ZPTV_Id int NOT NULL IDENTITY (1, 1),
+	ZPTV_MGAA_Id int NOT NULL,
+	ZPTV_MBPC_Id int NULL,
+	ZPTV_Prezzo decimal(28, 15) NOT NULL,
+	ZPTV_Sconto1 decimal(28, 15) NULL,
+	ZPTV_Sconto2 decimal(28, 15) NULL,
+	ZPTV_Sconto3 decimal(28, 15) NULL
+	)  ON [PRIMARY]
+GO
+ALTER TABLE dbo.Z_PrezziTV ADD CONSTRAINT
+	PK_Z_PrezziTV PRIMARY KEY CLUSTERED 
+	(
+	ZPTV_Id
+	) WITH( STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+
+GO
+```
 * Inserire nella tabella Z_APP_info l'indirizzo del server API con la chiamata **/trigger**
 ```
 INSERT INTO [TestTrigger].[dbo].[Z_APP_Info]
@@ -241,7 +261,46 @@ GO
   ALTER TABLE BL_Artic
   ALTER COLUMN BLAR_APP_ID VARCHAR(50);
 ```
-* Creare le procedure per l'aggiornamento di Ordini/Bolle/Fatture Inserite da YES
+* Creare le procedure per l'aggiornamento di Ordini/Bolle/Fatture Inserite da YES e l'aggiornamento serale dei prezzi
+  * **Aggiornamento Prezzi**
+```
+CREATE PROCEDURE Z_AggiornaPrzTV
+AS
+DELETE FROM Z_PrezziTV WHERE ZPTV_Id IN
+(
+	SELECT ZPTV_Id FROM Z_PrezziTV
+	LEFT JOIN 
+	(
+		SELECT LVAR_ID,LVAR_MGAA_Id,LVAN_MBPC_Id,LVAR_Prezzo,(SELECT LVSC_Perc FROM LV_Sconti WHERE LVSC_LVAR_Id=LVAR_Id AND LVSC_NumOrd=1) AS SC1,
+		(SELECT LVSC_Perc FROM LV_Sconti WHERE LVSC_LVAR_Id=LVAR_Id AND LVSC_NumOrd=2) AS SC2,
+		(SELECT LVSC_Perc FROM LV_Sconti WHERE LVSC_LVAR_Id=LVAR_Id AND LVSC_NumOrd=3) AS SC3  
+		FROM LV_Anagr JOIN LV_Arti ON LVAN_Id=LVAR_LVAN_Id 
+		WHERE ISNULL(LVAN_DtValDa,'19000101')<=dbo.Date_TruncateTime(GETDATE())
+		AND ISNULL(LVAN_DtValA,'20790101')>=dbo.Date_TruncateTime(GETDATE()) 
+	) T ON LVAR_MGAA_Id=ZPTV_MGAA_Id AND ISNULL(LVAN_MBPC_Id,0)=ISNULL(ZPTV_MBPC_Id,0)
+	AND ZPTV_Prezzo=LVAR_Prezzo AND ISNULL(SC1,0.0)=ISNULL(ZPTV_Sconto1,0.0)
+	AND ISNULL(SC2,0.0)=ISNULL(ZPTV_Sconto2,0.0)
+	AND ISNULL(SC3,0.0)=ISNULL(ZPTV_Sconto3,0.0)
+	WHERE LVAR_Id IS NULL
+)
+
+
+
+INSERT INTO Z_PrezziTV(ZPTV_MGAA_Id,ZPTV_MBPC_Id,ZPTV_Prezzo,ZPTV_Sconto1,ZPTV_Sconto2,ZPTV_Sconto3)
+SELECT LVAR_MGAA_Id,LVAN_MBPC_Id,LVAR_Prezzo,SC1,SC2,SC3 FROM
+(
+	SELECT LVAR_MGAA_Id,LVAN_MBPC_Id,LVAR_Prezzo,(SELECT LVSC_Perc FROM LV_Sconti WHERE LVSC_LVAR_Id=LVAR_Id AND LVSC_NumOrd=1) AS SC1,
+	(SELECT LVSC_Perc FROM LV_Sconti WHERE LVSC_LVAR_Id=LVAR_Id AND LVSC_NumOrd=2) AS SC2,
+	(SELECT LVSC_Perc FROM LV_Sconti WHERE LVSC_LVAR_Id=LVAR_Id AND LVSC_NumOrd=3) AS SC3  
+	FROM LV_Anagr JOIN LV_Arti ON LVAN_Id=LVAR_LVAN_Id 
+	WHERE ISNULL(LVAN_DtValDa,'19000101')<=dbo.Date_TruncateTime(GETDATE())
+	AND ISNULL(LVAN_DtValA,'20790101')>=dbo.Date_TruncateTime(GETDATE()) 
+) T	
+LEFT JOIN Z_PrezziTV ON LVAR_MGAA_Id=ZPTV_MGAA_Id AND ISNULL(LVAN_MBPC_Id,0)=ISNULL(ZPTV_MBPC_Id,0)
+	AND ZPTV_Prezzo=LVAR_Prezzo AND ISNULL(SC1,0.0)=ISNULL(ZPTV_Sconto1,0.0)
+	AND ISNULL(SC2,0.0)=ISNULL(ZPTV_Sconto2,0.0)
+	AND ISNULL(SC3,0.0)=ISNULL(ZPTV_Sconto3,0.0) WHERE ZPTV_Id IS NULL
+```  
   * **Ordini**
 ```
 /****** Object:  StoredProcedure [dbo].[Z_APP_OC_Anag]    Script Date: 11/13/2024 16:48:44 ******/
