@@ -1,6 +1,6 @@
-# yesplus
+# YES+
 
-A new Flutter project.
+Applicazione Mobile per integrazione gestionale YES
 
 ## Getting Started
 
