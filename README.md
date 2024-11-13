@@ -1332,7 +1332,8 @@ BEGIN
 END;
 GO
 ```
-
+* Schedulare con SQLServerAgent la procedura per aggiornamento prezzi.
+  
 ## Modifiche su YES
 
 * Aggiungere su TipiBolla, TipiOrdine e TipiFattura la stored corrispondente in chiusura.
