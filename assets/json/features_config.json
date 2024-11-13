@@ -1,0 +1,17 @@
+{
+    "standard": {
+      "enableFeatureX": true,
+      "useCustomTheme": false
+    },
+    "gelomare": {
+      "enableFeatureX": true,
+      "useCustomTheme": true,
+      "maxItems": 20
+    },
+    "mcfood": {
+      "enableFeatureX": false,
+      "useCustomTheme": false,
+      "maxItems": 10
+    }
+  }
+  
