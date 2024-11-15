@@ -1269,7 +1269,139 @@ BEGIN
 END;
 GO
 ```
+* Creare Trigger Per Aggiornamento Altre Tabelle
+  * Z_PrezziTv
+```
+--DROP TRIGGER [dbo].[Z_APP_Z_PrezziTv] ;
+CREATE TRIGGER [dbo].[Z_APP_Z_PrezziTv] ON [dbo].[Z_PrezziTv]
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    INSERT INTO Z_APP_LOG (ZALO_Messaggio, ZALO_Provenienza) VALUES ('ESEGUO TRIGGER DELETE Z_PrezziTv','TRIGGER: Z_APP_Z_PrezziTv');
+    SET NOCOUNT ON;
 
+    DECLARE @URL NVARCHAR(MAX);
+    SELECT @URL = ZIAP_IndirizzoServer FROM Z_APP_info;
+    DECLARE @Object AS INT;
+    DECLARE @ResponseText AS VARCHAR(8000);
+    DECLARE @OperationType VARCHAR(10);
+    DECLARE @query AS VARCHAR(5000);    
+    DECLARE @ZPTV_ID as INT;
+    DECLARE @ZPTV_MGAA_ID as INT;
+    DECLARE @ZPTV_MBPC_ID as INT;
+    DECLARE @ZPTV_Prezzo AS DECIMAL(18,2);
+    DECLARE @ZPTV_Sconto1 as DECIMAL(18,2);
+    DECLARE @ZPTV_Sconto2 as DECIMAL(18,2);
+    DECLARE @ZPTV_Sconto3 as DECIMAL(18,2);
+
+
+    DECLARE @DettagliModifiche TABLE (
+        ZPTV_ID INT,
+        ZPTV_MGAA_ID INT,
+        ZPTV_MBPC_ID INT,
+        ZPTV_Prezzo DECIMAL(18,2),
+        ZPTV_Sconto1 DECIMAL(18,2),
+        ZPTV_Sconto2 DECIMAL(18,2),
+        ZPTV_Sconto3 DECIMAL(18,2),
+        OperationType VARCHAR(10)
+    );
+
+    IF EXISTS (SELECT * FROM inserted) AND NOT EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            ZPTV_ID, ZPTV_MGAA_ID, ZPTV_MBPC_ID, ZPTV_Prezzo, ZPTV_Sconto1,ZPTV_Sconto2, ZPTV_Sconto3,
+            'INSERT'
+        FROM inserted;
+    END
+
+    IF EXISTS (SELECT * FROM inserted) AND EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            i.ZPTV_ID, i.ZPTV_MGAA_ID, i.ZPTV_MBPC_ID, i.ZPTV_Prezzo, i.ZPTV_Sconto1,i.ZPTV_Sconto2, i.ZPTV_Sconto3, 'UPDATE'
+        FROM inserted i
+        JOIN deleted d ON i.ZPTV_ID = d.ZPTV_ID;
+    END
+
+    IF EXISTS (SELECT * FROM deleted) AND NOT EXISTS (SELECT * FROM inserted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            ZPTV_ID, ZPTV_MGAA_ID, ZPTV_MBPC_ID, ZPTV_Prezzo, ZPTV_Sconto1,ZPTV_Sconto2, ZPTV_Sconto3, 'DELETE'
+        FROM deleted;
+    END
+
+    DECLARE cursore CURSOR FOR 
+    SELECT * FROM @DettagliModifiche;
+
+    OPEN cursore;
+    FETCH NEXT FROM cursore INTO 
+        @ZPTV_ID, @ZPTV_MGAA_ID, @ZPTV_MBPC_ID, @ZPTV_Prezzo, @ZPTV_Sconto1, @ZPTV_Sconto2, @ZPTV_Sconto3,
+        @OperationType;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        DECLARE @body AS VARCHAR(8000) = '{
+           "QUERY":"' + @OperationType + '",
+           "TABLE":"Z_PrezziTv",
+           "DATA":{
+                "ZPTV_ID": "' + CAST(ISNULL(@ZPTV_ID, 0) AS VARCHAR) + '",
+                "ZPTV_MGAA_ID": "' + CAST(ISNULL(@ZPTV_MGAA_ID, 0) AS VARCHAR) + '",
+                "ZPTV_MBPC_ID": "' + CAST(ISNULL(@ZPTV_MBPC_ID, 0) AS VARCHAR) + '",
+                "ZPTV_Prezzo": "' + CAST(ISNULL(@ZPTV_Prezzo, 0) AS VARCHAR) + '",
+                "ZPTV_Sconto1": "' + CAST(ISNULL(@ZPTV_Sconto1, 0) AS VARCHAR) + '",
+                "ZPTV_Sconto2": "' + CAST(ISNULL(@ZPTV_Sconto2, 0) AS VARCHAR) + '",
+                "ZPTV_Sconto3": "' + CAST(ISNULL(@ZPTV_Sconto3, 0) AS VARCHAR) + '"
+            }
+        }' -- JSON body for HTTP POST similar to the first trigger
+		print(@body);
+        EXEC sp_OACreate 'MSXML2.XMLHTTP', @Object OUT;
+        EXEC sp_OAMethod @Object, 'open', NULL, 'post', @URL, 'false';
+        EXEC sp_OAMethod @Object, 'setRequestHeader', NULL, 'Content-Type', 'application/json';
+        EXEC sp_OAMethod @Object, 'send', NULL, @body;
+        EXEC sp_OAMethod @Object, 'responseText', @ResponseText OUTPUT;
+
+        
+
+		--INSERT INTO Z_APP_LOG (ZALO_Messaggio, ZALO_Provenienza) VALUES ('Z_APP_Z_PrezziTv - ResponseText'+@ResponseText,'TRIGGER: Z_APP_Z_PrezziTv');       IF CHARINDEX('ko',(SELECT @ResponseText)) > 0
+		BEGIN
+			INSERT INTO dbo.Z_APP_Messaggi
+				(ZAPP_Messaggio)
+				VALUES('{
+           "QUERY":"' + @OperationType + '",
+           "TABLE":"Z_PrezziTv",
+           "DATA":{
+                "ZPTV_ID": "' + CAST(ISNULL(@ZPTV_ID, 0) AS VARCHAR) + '",
+                "ZPTV_MGAA_ID": "' + CAST(ISNULL(@ZPTV_MGAA_ID, 0) AS VARCHAR) + '",
+                "ZPTV_MBPC_ID": "' + CAST(ISNULL(@ZPTV_MBPC_ID, 0) AS VARCHAR) + '",
+                "ZPTV_Prezzo": "' + CAST(ISNULL(@ZPTV_Prezzo, 0) AS VARCHAR) + '",
+                "ZPTV_Sconto1": "' + CAST(ISNULL(@ZPTV_Sconto1, 0) AS VARCHAR) + '",
+                "ZPTV_Sconto2": "' + CAST(ISNULL(@ZPTV_Sconto2, 0) AS VARCHAR) + '",
+                "ZPTV_Sconto3": "' + CAST(ISNULL(@ZPTV_Sconto3, 0) AS VARCHAR) + '"
+	            }
+	        }');
+		 SELECT @ResponseText As 'Message'--Creare una tabella messaggi ed aggiungere qui i messaggi da inserire che non sono passati,
+		 --se ritorna ko vuol dire che non è stato salvato il messaggio per nessun dispositivo, quindi quando si collega un client 
+		 --va fatto il controllo sulla tabella messaggi e se sono presenti si esegue la funzione che inserisce un messaggio per ogni device
+		 --e prova ad inviarli.
+		END
+		EXEC sp_OADestroy @Object
+	       
+	    FETCH NEXT FROM cursore INTO 
+	        @ZPTV_ID, @ZPTV_MGAA_ID, @ZPTV_MBPC_ID, @ZPTV_Prezzo, @ZPTV_Sconto1, @ZPTV_Sconto2, @ZPTV_Sconto3,
+        	@OperationType;
+    END;
+
+    CLOSE cursore;
+    DEALLOCATE cursore;
+
+    IF @Object IS NOT NULL
+	BEGIN
+	    EXEC sp_OADestroy @Object;
+	END
+END;
+```
 * Aggiungere le seguenti funzioni
 ```
 /****** Object:  UserDefinedFunction [dbo].[Z_APP_Disponibilita]    Script Date: 11/13/2024 17:04:08 ******/
