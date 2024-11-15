@@ -1402,6 +1402,1703 @@ BEGIN
 	END
 END;
 ```
+  * Pagamenti Bolle
+```
+CREATE TRIGGER [dbo].[Z_APP_BL_Pagam] ON [dbo].[BL_Pagam]
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    PRINT 'ESEGUO TRIGGER';
+    SET NOCOUNT ON;
+
+    DECLARE @URL NVARCHAR(MAX);
+    SELECT @URL = ZIAP_IndirizzoServer FROM Z_APP_info;
+    DECLARE @Object AS INT;
+    DECLARE @ResponseText AS VARCHAR(8000);
+	DECLARE @query AS VARCHAR(5000);
+    DECLARE @OperationType VARCHAR(10);
+    DECLARE @BLPG_ID as INT;
+    DECLARE @BLPG_BLAN_ID as INT;
+   	DECLARE @BLPG_MBTP_ID as INT;
+    DECLARE @BLPG_MBSP_ID as INT;
+
+    DECLARE @DettagliModifiche TABLE (
+        BLPG_ID INT,
+        BLPG_BLAN_ID INT,
+        BLPG_MBTP_ID INT,
+        BLPG_MBSP_ID INT,
+        OperationType VARCHAR(10)
+    );
+
+    IF EXISTS (SELECT * FROM inserted) AND NOT EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            BLPG_ID, BLPG_BLAN_ID, BLPG_MBTP_ID,BLPG_MBSP_ID,'INSERT'
+        FROM inserted;
+    END
+
+    IF EXISTS (SELECT * FROM inserted) AND EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+           i.BLPG_ID, i.BLPG_BLAN_ID, i.BLPG_MBTP_ID, i.BLPG_MBSP_ID,'UPDATE'
+        FROM inserted i
+        JOIN deleted d ON i.BLPG_ID = d.BLPG_ID;
+    END
+
+    IF EXISTS (SELECT * FROM deleted) AND NOT EXISTS (SELECT * FROM inserted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            BLPG_ID, BLPG_BLAN_ID, BLPG_MBTP_ID,BLPG_MBSP_ID,'DELETE'
+        FROM deleted;
+    END
+
+    DECLARE cursore CURSOR FOR 
+    SELECT * FROM @DettagliModifiche;
+
+    OPEN cursore;
+    FETCH NEXT FROM cursore INTO 
+         @BLPG_ID, @BLPG_BLAN_ID, @BLPG_MBTP_ID, @BLPG_MBSP_ID, @OperationType;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+		IF EXISTS (
+			SELECT * FROM Z_APP_dispositivi
+				WHERE ZAPPD_BLTI_ID1 IN (
+					SELECT BLAN_BLTI_ID FROM BL_Pagam 
+					JOIN BL_anag ON BLPG_BLAN_Id = BLAN_ID
+					WHERE BLPG_ID=@BLPG_ID
+				) OR  ZAPPD_BLTI_ID2 IN (
+					SELECT BLAN_BLTI_ID FROM BL_Pagam 
+					JOIN BL_anag ON BLPG_BLAN_Id = BLAN_ID
+					WHERE BLPG_ID=@BLPG_ID
+				)
+		)
+       	BEGIN 
+	       	PRINT('SONO DENTRO IL CURSORE');
+		   
+	        DECLARE @body AS VARCHAR(8000) = '{
+	           "QUERY":"' + @OperationType + '",
+	           "TABLE":"BL_Pagam",
+	           "DATA":{
+	                "BLPG_ID": "' + CAST(ISNULL(@BLPG_ID, 0) AS VARCHAR) + '",
+	                "BLPG_BLAN_ID": "' + CAST(ISNULL(@BLPG_BLAN_ID, 0) AS VARCHAR) + '",
+					"BLPG_MBTP_ID": "' + CAST(ISNULL(@BLPG_MBTP_ID, 0) AS VARCHAR) + '",				
+	                "BLPG_MBSP_ID": "' + CAST(ISNULL(@BLPG_MBSP_ID, 0) AS VARCHAR) +'"
+	            }
+	        }' -- JSON body for HTTP POST similar to the first trigger
+			print(@body);
+	        EXEC sp_OACreate 'MSXML2.XMLHTTP', @Object OUT;
+	        EXEC sp_OAMethod @Object, 'open', NULL, 'post', @URL, 'false';
+	        EXEC sp_OAMethod @Object, 'setRequestHeader', NULL, 'Content-Type', 'application/json';
+	        EXEC sp_OAMethod @Object, 'send', NULL, @body;
+	        EXEC sp_OAMethod @Object, 'responseText', @ResponseText OUTPUT;
+	
+	        PRINT @ResponseText;
+	
+	       IF CHARINDEX('ko',(SELECT @ResponseText)) > 0
+			BEGIN
+				INSERT INTO dbo.Z_APP_Messaggi
+					(ZAPP_Messaggio)
+					VALUES('{
+	           "QUERY":"' + @OperationType + '",
+	           "TABLE":"BL_Pagam",
+	           "DATA":{
+	                "BLPG_ID": "' + CAST(ISNULL(@BLPG_ID, 0) AS VARCHAR) + '",
+	                "BLPG_BLAN_ID": "' + CAST(ISNULL(@BLPG_BLAN_ID, 0) AS VARCHAR) + '",
+					"BLPG_MBTP_ID": "' + CAST(ISNULL(@BLPG_MBTP_ID, 0) AS VARCHAR) + '",				
+	                "BLPG_MBSP_ID": "' + CAST(ISNULL(@BLPG_MBSP_ID, 0) AS VARCHAR) +'"
+	            }
+	        }');
+			 SELECT @ResponseText As 'Message'--Creare una tabella messaggi ed aggiungere qui i messaggi da inserire che non sono passati,
+			 --se ritorna ko vuol dire che non è stato salvato il messaggio per nessun dispositivo, quindi quando si collega un client 
+			 --va fatto il controllo sulla tabella messaggi e se sono presenti si esegue la funzione che inserisce un messaggio per ogni device
+			 --e prova ad inviarli.
+			END
+			ELSE
+			BEGIN
+			 --SELECT @ResponseText As 'Employee Details'
+				print @query;
+			END
+			EXEC sp_OADestroy @Object
+
+       	END
+       	
+        FETCH NEXT FROM cursore INTO 
+             @BLPG_ID, @BLPG_BLAN_ID, @BLPG_MBTP_ID, @BLPG_MBSP_ID, @OperationType;
+    END
+
+    CLOSE cursore;
+    DEALLOCATE cursore;
+
+    IF @Object IS NOT NULL
+	BEGIN
+	    EXEC sp_OADestroy @Object;
+	END
+
+END;
+```
+
+  * Tipo Bolle
+```
+CREATE TRIGGER [dbo].[Z_APP_BL_Tipo] ON [dbo].[BL_Tipo]
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    PRINT 'ESEGUO TRIGGER';
+    SET NOCOUNT ON;
+
+    DECLARE @URL NVARCHAR(MAX);
+    SELECT @URL = ZIAP_IndirizzoServer FROM Z_APP_info;
+    DECLARE @Object AS INT;
+    DECLARE @ResponseText AS VARCHAR(8000);
+	DECLARE @query AS VARCHAR(5000);
+    DECLARE @OperationType VARCHAR(10);
+    DECLARE @BLTI_ID as INT;
+    DECLARE @BLTI_TipNum as INT;
+   	DECLARE @BLTI_Tipo as INT;
+  	DECLARE @BLTI_NaturaDDT as INT;
+    DECLARE @BLTI_Descr as VARCHAR(255);
+
+    DECLARE @DettagliModifiche TABLE (
+        BLTI_ID INT,
+        BLTI_TipNum INT,
+        BLTI_Tipo INT,
+        BLTI_NaturaDDT INT,
+        BLTI_Descr VARCHAR(255),
+        OperationType VARCHAR(10)
+    );
+
+    IF EXISTS (SELECT * FROM inserted) AND NOT EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            BLTI_ID, BLTI_TipNum, BLTI_Tipo,BLTI_NaturaDDT,BLTI_Descr,'INSERT'
+        FROM inserted;
+    END
+
+    IF EXISTS (SELECT * FROM inserted) AND EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            i.BLTI_ID, i.BLTI_TipNum, i.BLTI_Tipo, i.BLTI_NaturaDDT, i.BLTI_Descr,'UPDATE'
+        FROM inserted i
+        JOIN deleted d ON i.BLTI_ID = d.BLTI_ID;
+    END
+
+    IF EXISTS (SELECT * FROM deleted) AND NOT EXISTS (SELECT * FROM inserted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            BLTI_ID, BLTI_TipNum, BLTI_Tipo,BLTI_NaturaDDT,BLTI_Descr, 'DELETE'
+        FROM deleted;
+    END
+
+    DECLARE cursore CURSOR FOR 
+    SELECT * FROM @DettagliModifiche;
+
+    OPEN cursore;
+    FETCH NEXT FROM cursore INTO 
+        @BLTI_ID, @BLTI_TipNum, @BLTI_Tipo, @BLTI_NaturaDDT, @BLTI_Descr, @OperationType;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+	    PRINT('SONO DENTRO IL CURSORE');
+	   
+        DECLARE @body AS VARCHAR(8000) = '{
+           "QUERY":"' + @OperationType + '",
+           "TABLE":"BL_Tipo",
+           "DATA":{
+                "BLTI_ID": "' + CAST(ISNULL(@BLTI_ID, 0) AS VARCHAR) + '",
+                "BLTI_TipNum": "' + CAST(ISNULL(@BLTI_TipNum, 0) AS VARCHAR) + '",
+				"BLTI_Tipo": "' + CAST(ISNULL(@BLTI_Tipo, 0) AS VARCHAR) + '",
+				"BLTI_NaturaDDT": "' + CAST(ISNULL(@BLTI_NaturaDDT, 0) AS VARCHAR) + '",				
+                "BLTI_Descr": "' + ISNULL(@BLTI_Descr, '') +'"
+            }
+        }' -- JSON body for HTTP POST similar to the first trigger
+		print(@body);
+        EXEC sp_OACreate 'MSXML2.XMLHTTP', @Object OUT;
+        EXEC sp_OAMethod @Object, 'open', NULL, 'post', @URL, 'false';
+        EXEC sp_OAMethod @Object, 'setRequestHeader', NULL, 'Content-Type', 'application/json';
+        EXEC sp_OAMethod @Object, 'send', NULL, @body;
+        EXEC sp_OAMethod @Object, 'responseText', @ResponseText OUTPUT;
+
+        PRINT @ResponseText;
+
+       IF CHARINDEX('ko',(SELECT @ResponseText)) > 0
+		BEGIN
+			INSERT INTO dbo.Z_APP_Messaggi
+				(ZAPP_Messaggio)
+				VALUES('{
+           "QUERY":"' + @OperationType + '",
+           "TABLE":"BL_Tipo",
+           "DATA":{
+                "BLTI_ID": "' + CAST(ISNULL(@BLTI_ID, 0) AS VARCHAR) + '",
+                "BLTI_TipNum": "' + CAST(ISNULL(@BLTI_TipNum, 0) AS VARCHAR) + '",
+				"BLTI_Tipo": "' + CAST(ISNULL(@BLTI_Tipo, 0) AS VARCHAR) + '",
+				"BLTI_NaturaDDT": "' + CAST(ISNULL(@BLTI_NaturaDDT, 0) AS VARCHAR) + '",				
+                "BLTI_Descr": "' + ISNULL(@BLTI_Descr, '') +'"
+            }
+        }');
+		 SELECT @ResponseText As 'Message'--Creare una tabella messaggi ed aggiungere qui i messaggi da inserire che non sono passati,
+		 --se ritorna ko vuol dire che non è stato salvato il messaggio per nessun dispositivo, quindi quando si collega un client 
+		 --va fatto il controllo sulla tabella messaggi e se sono presenti si esegue la funzione che inserisce un messaggio per ogni device
+		 --e prova ad inviarli.
+		END
+		ELSE
+		BEGIN
+		 --SELECT @ResponseText As 'Employee Details'
+			print @query;
+		END
+		EXEC sp_OADestroy @Object
+       
+        FETCH NEXT FROM cursore INTO 
+             @BLTI_ID, @BLTI_TipNum, @BLTI_Tipo, @BLTI_NaturaDDT, @BLTI_Descr, @OperationType;
+    END
+
+    CLOSE cursore;
+    DEALLOCATE cursore;
+
+    EXEC sp_OADestroy @Object;
+END;
+```
+
+  * Pagamenti Fatture
+```
+CREATE TRIGGER [dbo].[Z_APP_FT_Pagam] ON [dbo].[FT_Pagam]
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    PRINT 'ESEGUO TRIGGER';
+    SET NOCOUNT ON;
+
+    DECLARE @URL NVARCHAR(MAX);
+    SELECT @URL = ZIAP_IndirizzoServer FROM Z_APP_info;
+    DECLARE @Object AS INT;
+    DECLARE @ResponseText AS VARCHAR(8000);
+	DECLARE @query AS VARCHAR(5000);
+    DECLARE @OperationType VARCHAR(10);
+    DECLARE @FTPG_ID as INT;
+    DECLARE @FTPG_FTAN_ID as INT;
+   	DECLARE @FTPG_MBTP_ID as INT;
+    DECLARE @FTPG_MBSP_ID as INT;
+
+    DECLARE @DettagliModifiche TABLE (
+        FTPG_ID INT,
+        FTPG_FTAN_ID INT,
+        FTPG_MBTP_ID INT,
+        FTPG_MBSP_ID INT,
+        OperationType VARCHAR(10)
+    );
+
+    IF EXISTS (SELECT * FROM inserted) AND NOT EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            FTPG_ID, FTPG_FTAN_ID, FTPG_MBTP_ID,FTPG_MBSP_ID,'INSERT'
+        FROM inserted;
+    END
+
+    IF EXISTS (SELECT * FROM inserted) AND EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+           i.FTPG_ID, i.FTPG_FTAN_ID, i.FTPG_MBTP_ID, i.FTPG_MBSP_ID,'UPDATE'
+        FROM inserted i
+        JOIN deleted d ON i.FTPG_ID = d.FTPG_ID;
+    END
+
+    IF EXISTS (SELECT * FROM deleted) AND NOT EXISTS (SELECT * FROM inserted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            FTPG_ID, FTPG_FTAN_ID, FTPG_MBTP_ID,FTPG_MBSP_ID,'DELETE'
+        FROM deleted;
+    END
+
+    DECLARE cursore CURSOR FOR 
+    SELECT * FROM @DettagliModifiche;
+
+    OPEN cursore;
+    FETCH NEXT FROM cursore INTO 
+         @FTPG_ID, @FTPG_FTAN_ID, @FTPG_MBTP_ID, @FTPG_MBSP_ID, @OperationType;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+	    
+	    IF EXISTS (SELECT * FROM Z_APP_dispositivi
+			WHERE ZAPPD_FTTI_ID IN (
+				SELECT FTAN_FTTI_ID FROM FT_pagam
+				JOIN FT_Anag ON FTPG_FTAN_ID=FTAN_ID
+				WHERE FTPG_ID=@FTPG_ID	
+			)
+		)
+		BEGIN 
+				
+			PRINT('SONO DENTRO IL CURSORE');
+		   
+	        DECLARE @body AS VARCHAR(8000) = '{
+	           "QUERY":"' + @OperationType + '",
+	           "TABLE":"FT_Pagam",
+	           "DATA":{
+	                "FTPG_ID": "' + CAST(ISNULL(@FTPG_ID, 0) AS VARCHAR) + '",
+	                "FTPG_FTAN_ID": "' + CAST(ISNULL(@FTPG_FTAN_ID, 0) AS VARCHAR) + '",
+					"FTPG_MBTP_ID": "' + CAST(ISNULL(@FTPG_MBTP_ID, 0) AS VARCHAR) + '",				
+	                "FTPG_MBSP_ID": "' + CAST(ISNULL(@FTPG_MBSP_ID, 0) AS VARCHAR) +'"
+	            }
+	        }' -- JSON body for HTTP POST similar to the first trigger
+			print(@body);
+	        EXEC sp_OACreate 'MSXML2.XMLHTTP', @Object OUT;
+	        EXEC sp_OAMethod @Object, 'open', NULL, 'post', @URL, 'false';
+	        EXEC sp_OAMethod @Object, 'setRequestHeader', NULL, 'Content-Type', 'application/json';
+	        EXEC sp_OAMethod @Object, 'send', NULL, @body;
+	        EXEC sp_OAMethod @Object, 'responseText', @ResponseText OUTPUT;
+	
+	        PRINT @ResponseText;
+	
+	       IF CHARINDEX('ko',(SELECT @ResponseText)) > 0
+			BEGIN
+				INSERT INTO dbo.Z_APP_Messaggi
+					(ZAPP_Messaggio)
+					VALUES('{
+	           "QUERY":"' + @OperationType + '",
+	           "TABLE":"FT_Pagam",
+	           "DATA":{
+	                "FTPG_ID": "' + CAST(ISNULL(@FTPG_ID, 0) AS VARCHAR) + '",
+	                "FTPG_FTAN_ID": "' + CAST(ISNULL(@FTPG_FTAN_ID, 0) AS VARCHAR) + '",
+					"FTPG_MBTP_ID": "' + CAST(ISNULL(@FTPG_MBTP_ID, 0) AS VARCHAR) + '",				
+	                "FTPG_MBSP_ID": "' + CAST(ISNULL(@FTPG_MBSP_ID, 0) AS VARCHAR) +'"
+	            }
+	        }');
+			 SELECT @ResponseText As 'Message'--Creare una tabella messaggi ed aggiungere qui i messaggi da inserire che non sono passati,
+			 --se ritorna ko vuol dire che non è stato salvato il messaggio per nessun dispositivo, quindi quando si collega un client 
+			 --va fatto il controllo sulla tabella messaggi e se sono presenti si esegue la funzione che inserisce un messaggio per ogni device
+			 --e prova ad inviarli.
+			END
+			ELSE
+			BEGIN
+			 --SELECT @ResponseText As 'Employee Details'
+				print @query;
+			END
+			EXEC sp_OADestroy @Object
+
+		END
+		
+       
+        FETCH NEXT FROM cursore INTO 
+             @FTPG_ID, @FTPG_FTAN_ID, @FTPG_MBTP_ID, @FTPG_MBSP_ID, @OperationType;
+    END
+
+    CLOSE cursore;
+    DEALLOCATE cursore;
+
+    IF @Object IS NOT NULL
+	BEGIN
+	    EXEC sp_OADestroy @Object;
+	END
+
+END;
+```
+
+  * Tipo Fatture
+```
+CREATE TRIGGER [dbo].[Z_APP_FT_Tipo] ON [dbo].[FT_Tipo]
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    PRINT 'ESEGUO TRIGGER';
+    SET NOCOUNT ON;
+
+    DECLARE @URL NVARCHAR(MAX);
+    SELECT @URL = ZIAP_IndirizzoServer FROM Z_APP_info;
+    DECLARE @Object AS INT;
+    DECLARE @ResponseText AS VARCHAR(8000);
+	DECLARE @query AS VARCHAR(5000);
+    DECLARE @OperationType VARCHAR(10);
+    DECLARE @FTTI_ID as INT;
+    DECLARE @FTTI_TipNum as INT;
+   	DECLARE @FTTI_Tipo as INT;
+  	DECLARE @FTTI_FattureInStatistica as INT;
+  	DECLARE @FTTI_NaturaFattura as INT;
+    DECLARE @FTTI_Descr as VARCHAR(255);
+
+    DECLARE @DettagliModifiche TABLE (
+        FTTI_ID INT,
+        FTTI_TipNum INT,
+        FTTI_Tipo INT,
+        FTTI_FattureInStatistica INT,
+        FTTI_NaturaFattura INT,
+        FTTI_Descr VARCHAR(255),
+        OperationType VARCHAR(10)
+    );
+
+    IF EXISTS (SELECT * FROM inserted) AND NOT EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            FTTI_ID, FTTI_TipNum, FTTI_Tipo,FTTI_FattureInStatistica,FTTI_NaturaFattura,FTTI_Descr,'INSERT'
+        FROM inserted;
+    END
+
+    IF EXISTS (SELECT * FROM inserted) AND EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            i.FTTI_ID, i.FTTI_TipNum, i.FTTI_Tipo, i.FTTI_FattureInStatistica, i.FTTI_NaturaFattura, i.FTTI_Descr,'UPDATE'
+        FROM inserted i
+        JOIN deleted d ON i.FTTI_ID = d.FTTI_ID;
+    END
+
+    IF EXISTS (SELECT * FROM deleted) AND NOT EXISTS (SELECT * FROM inserted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            FTTI_ID, FTTI_TipNum, FTTI_Tipo,FTTI_FattureInStatistica,FTTI_NaturaFattura,FTTI_Descr, 'DELETE'
+        FROM deleted;
+    END
+
+    DECLARE cursore CURSOR FOR 
+    SELECT * FROM @DettagliModifiche;
+
+    OPEN cursore;
+    FETCH NEXT FROM cursore INTO 
+        @FTTI_ID, @FTTI_TipNum, @FTTI_Tipo, @FTTI_FattureInStatistica, @FTTI_NaturaFattura, @FTTI_Descr, @OperationType;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+	    PRINT('SONO DENTRO IL CURSORE');
+	   
+        DECLARE @body AS VARCHAR(8000) = '{
+           "QUERY":"' + @OperationType + '",
+           "TABLE":"FT_Tipo",
+           "DATA":{
+                "FTTI_ID": "' + CAST(ISNULL(@FTTI_ID, 0) AS VARCHAR) + '",
+                "FTTI_TipNum": "' + CAST(ISNULL(@FTTI_TipNum, 0) AS VARCHAR) + '",
+				"FTTI_Tipo": "' + CAST(ISNULL(@FTTI_Tipo, 0) AS VARCHAR) + '",
+				"FTTI_FattureInStatistica": "' + CAST(ISNULL(@FTTI_FattureInStatistica, 0) AS VARCHAR) + '",
+				"FTTI_NaturaFattura": "' + CAST(ISNULL(@FTTI_NaturaFattura, 0) AS VARCHAR) + '",
+                "FTTI_Descr": "' + ISNULL(@FTTI_Descr, '') +'"
+            }
+        }' -- JSON body for HTTP POST similar to the first trigger
+		print(@body);
+        EXEC sp_OACreate 'MSXML2.XMLHTTP', @Object OUT;
+        EXEC sp_OAMethod @Object, 'open', NULL, 'post', @URL, 'false';
+        EXEC sp_OAMethod @Object, 'setRequestHeader', NULL, 'Content-Type', 'application/json';
+        EXEC sp_OAMethod @Object, 'send', NULL, @body;
+        EXEC sp_OAMethod @Object, 'responseText', @ResponseText OUTPUT;
+
+        PRINT @ResponseText;
+
+       IF CHARINDEX('ko',(SELECT @ResponseText)) > 0
+		BEGIN
+			INSERT INTO dbo.Z_APP_Messaggi
+				(ZAPP_Messaggio)
+				VALUES('{
+           "QUERY":"' + @OperationType + '",
+           "TABLE":"FT_Tipo",
+           "DATA":{
+                "FTTI_ID": "' + CAST(ISNULL(@FTTI_ID, 0) AS VARCHAR) + '",
+                "FTTI_TipNum": "' + CAST(ISNULL(@FTTI_TipNum, 0) AS VARCHAR) + '",
+				"FTTI_Tipo": "' + CAST(ISNULL(@FTTI_Tipo, 0) AS VARCHAR) + '",
+				"FTTI_FattureInStatistica": "' + CAST(ISNULL(@FTTI_FattureInStatistica, 0) AS VARCHAR) + '",
+				"FTTI_NaturaFattura": "' + CAST(ISNULL(@FTTI_NaturaFattura, 0) AS VARCHAR) + '",
+                "FTTI_Descr": "' + ISNULL(@FTTI_Descr, '') +'"
+            }
+        }');
+		 SELECT @ResponseText As 'Message'--Creare una tabella messaggi ed aggiungere qui i messaggi da inserire che non sono passati,
+		 --se ritorna ko vuol dire che non è stato salvato il messaggio per nessun dispositivo, quindi quando si collega un client 
+		 --va fatto il controllo sulla tabella messaggi e se sono presenti si esegue la funzione che inserisce un messaggio per ogni device
+		 --e prova ad inviarli.
+		END
+		ELSE
+		BEGIN
+		 --SELECT @ResponseText As 'Employee Details'
+			print @query;
+		END
+		EXEC sp_OADestroy @Object
+       
+        FETCH NEXT FROM cursore INTO 
+             @FTTI_ID, @FTTI_TipNum, @FTTI_Tipo, @FTTI_FattureInStatistica, @FTTI_NaturaFattura, @FTTI_Descr, @OperationType;
+    END
+
+    CLOSE cursore;
+    DEALLOCATE cursore;
+
+    EXEC sp_OADestroy @Object;
+END;
+```
+
+  * Anagrafiche Agenti
+```
+CREATE TRIGGER [dbo].[Z_APP_MB_Agenti] ON [dbo].[MB_Agenti]
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    PRINT 'ESEGUO TRIGGER';
+    SET NOCOUNT ON;
+
+    DECLARE @URL NVARCHAR(MAX);
+    SELECT @URL = ZIAP_IndirizzoServer FROM Z_APP_info;
+    DECLARE @Object AS INT;
+    DECLARE @ResponseText AS VARCHAR(8000);
+	DECLARE @query AS VARCHAR(5000);
+    DECLARE @OperationType VARCHAR(10);
+    DECLARE @MBAG_ID as INT;
+    DECLARE @MBAG_MBAN_ID as INT;
+    DECLARE @MBAN_RagSoc as VARCHAR(255);
+
+    DECLARE @DettagliModifiche TABLE (
+        MBAG_ID INT,
+        MBAG_MBAN_ID INT,
+        MBAN_RagSoc VARCHAR(255),
+        OperationType VARCHAR(10)
+    );
+
+    IF EXISTS (SELECT * FROM inserted) AND NOT EXISTS (SELECT * FROM deleted)
+    BEGIN
+	    
+	    SELECT @MBAN_RagSoc=MBAN_RagSoc FROM MB_Anagr WHERE MBAN_ID = (SELECT MBAG_MBAN_ID FROM inserted);
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            MBAG_ID, MBAG_MBAN_ID, @MBAN_RagSoc,'INSERT'
+        FROM inserted;
+    END
+
+    IF EXISTS (SELECT * FROM inserted) AND EXISTS (SELECT * FROM deleted)
+    BEGIN
+	    SELECT @MBAN_RagSoc=MBAN_RagSoc FROM MB_Anagr WHERE MBAN_ID = 
+	    (SELECT i.MBAG_MBAN_ID FROM inserted i
+        	JOIN deleted d ON i.MBAG_ID = d.MBAG_ID);
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            i.MBAG_ID, i.MBAG_MBAN_ID,@MBAN_RagSoc,'UPDATE'
+        FROM inserted i
+        JOIN deleted d ON i.MBAG_ID = d.MBAG_ID;
+    END
+
+    IF EXISTS (SELECT * FROM deleted) AND NOT EXISTS (SELECT * FROM inserted)
+    BEGIN
+	    SELECT @MBAN_RagSoc=MBAN_RagSoc FROM MB_Anagr WHERE MBAN_ID = (SELECT MBAG_MBAN_ID FROM inserted);
+        INSERT INTO @DettagliModifiche
+        SELECT 
+             MBAG_ID, MBAG_MBAN_ID, @MBAN_RagSoc, 'DELETE'
+        FROM deleted;
+    END
+
+    DECLARE cursore CURSOR FOR 
+    SELECT * FROM @DettagliModifiche;
+
+    OPEN cursore;
+    FETCH NEXT FROM cursore INTO 
+        @MBAG_ID, @MBAG_MBAN_ID, @MBAN_RagSoc, @OperationType;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+	    PRINT('SONO DENTRO IL CURSORE');
+	   
+        DECLARE @body AS VARCHAR(8000) = '{
+           "QUERY":"' + @OperationType + '",
+           "TABLE":"MB_Agenti",
+           "DATA":{
+                "MBAG_ID": "' + CAST(ISNULL(@MBAG_ID, 0) AS VARCHAR) + '",
+                "MBAG_MBAN_ID": "' + CAST(ISNULL(@MBAG_MBAN_ID, 0) AS VARCHAR) + '",		
+                "MBAN_RagSoc": "' + ISNULL(@MBAN_RagSoc, '') +'"
+            }
+        }' -- JSON body for HTTP POST similar to the first trigger
+		print(@body);
+        EXEC sp_OACreate 'MSXML2.XMLHTTP', @Object OUT;
+        EXEC sp_OAMethod @Object, 'open', NULL, 'post', @URL, 'false';
+        EXEC sp_OAMethod @Object, 'setRequestHeader', NULL, 'Content-Type', 'application/json';
+        EXEC sp_OAMethod @Object, 'send', NULL, @body;
+        EXEC sp_OAMethod @Object, 'responseText', @ResponseText OUTPUT;
+
+        PRINT @ResponseText;
+
+       IF CHARINDEX('ko',(SELECT @ResponseText)) > 0
+		BEGIN
+			INSERT INTO dbo.Z_APP_Messaggi
+				(ZAPP_Messaggio)
+				VALUES('{
+           "QUERY":"' + @OperationType + '",
+           "TABLE":"MB_Agenti",
+           "DATA":{
+                "MBAG_ID": "' + CAST(ISNULL(@MBAG_ID, 0) AS VARCHAR) + '",
+                "MBAG_MBAN_ID": "' + CAST(ISNULL(@MBAG_MBAN_ID, 0) AS VARCHAR) + '",		
+                "MBAN_RagSoc": "' + ISNULL(@MBAN_RagSoc, '') +'"
+            }
+        }' );
+		 SELECT @ResponseText As 'Message'--Creare una tabella messaggi ed aggiungere qui i messaggi da inserire che non sono passati,
+		 --se ritorna ko vuol dire che non è stato salvato il messaggio per nessun dispositivo, quindi quando si collega un client 
+		 --va fatto il controllo sulla tabella messaggi e se sono presenti si esegue la funzione che inserisce un messaggio per ogni device
+		 --e prova ad inviarli.
+		END
+		ELSE
+		BEGIN
+		 --SELECT @ResponseText As 'Employee Details'
+			print @query;
+		END
+		EXEC sp_OADestroy @Object
+       
+        FETCH NEXT FROM cursore INTO 
+              @MBAG_ID, @MBAG_MBAN_ID, @MBAN_RagSoc, @OperationType;
+    END
+
+    CLOSE cursore;
+    DEALLOCATE cursore;
+
+    EXEC sp_OADestroy @Object;
+END;
+```
+
+  * IVA
+```
+CREATE TRIGGER [dbo].[Z_APP_MB_Iva] ON [dbo].[MB_Iva]
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    PRINT 'ESEGUO TRIGGER';
+    SET NOCOUNT ON;
+
+    DECLARE @URL NVARCHAR(MAX);
+    SELECT @URL = ZIAP_IndirizzoServer FROM Z_APP_info;
+    DECLARE @Object AS INT;
+    DECLARE @ResponseText AS VARCHAR(8000);
+	DECLARE @query AS VARCHAR(5000);
+    DECLARE @OperationType VARCHAR(10);
+    DECLARE @MBIV_ID as INT;
+    DECLARE @MBIV_IVA as INT;
+   	DECLARE @MBIV_Perc as INT;
+    DECLARE @MBIV_Descr as VARCHAR(255);
+
+    DECLARE @DettagliModifiche TABLE (
+        MBIV_ID INT,
+        MBIV_IVA INT,
+        MBIV_Perc INT,
+        MBIV_Descr VARCHAR(255),
+        OperationType VARCHAR(10)
+    );
+
+    IF EXISTS (SELECT * FROM inserted) AND NOT EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            MBIV_Id, MBIV_IVA, MBIV_Perc,MBIV_Descr,'INSERT'
+        FROM inserted;
+    END
+
+    IF EXISTS (SELECT * FROM inserted) AND EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            i.MBIV_Id, i.MBIV_IVA,i.MBIV_Perc,i.MBIV_Descr,'UPDATE'
+        FROM inserted i
+        JOIN deleted d ON i.MBIV_ID = d.MBIV_ID;
+    END
+
+    IF EXISTS (SELECT * FROM deleted) AND NOT EXISTS (SELECT * FROM inserted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            MBIV_Id, MBIV_IVA, MBIV_Perc,MBIV_Descr,'DELETE'
+        FROM deleted;
+    END
+
+    DECLARE cursore CURSOR FOR 
+    SELECT * FROM @DettagliModifiche;
+
+    OPEN cursore;
+    FETCH NEXT FROM cursore INTO 
+        @MBIV_ID, @MBIV_IVA, @MBIV_Perc, @MBIV_Descr, @OperationType;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+	    PRINT('SONO DENTRO IL CURSORE');
+	   
+        DECLARE @body AS VARCHAR(8000) = '{
+           "QUERY":"' + @OperationType + '",
+           "TABLE":"MB_IVA",
+           "DATA":{
+                "MBIV_ID": "' + CAST(ISNULL(@MBIV_ID, 0) AS VARCHAR) + '",
+                "MBIV_IVA": "' + CAST(ISNULL(@MBIV_IVA, 0) AS VARCHAR) + '",
+				"MBIV_Perc": "' + CAST(ISNULL(@MBIV_Perc, 0) AS VARCHAR) + '",				
+                "MBIV_Descr": "' + ISNULL(@MBIV_Descr, '') +'"
+            }
+        }' -- JSON body for HTTP POST similar to the first trigger
+		print(@body);
+        EXEC sp_OACreate 'MSXML2.XMLHTTP', @Object OUT;
+        EXEC sp_OAMethod @Object, 'open', NULL, 'post', @URL, 'false';
+        EXEC sp_OAMethod @Object, 'setRequestHeader', NULL, 'Content-Type', 'application/json';
+        EXEC sp_OAMethod @Object, 'send', NULL, @body;
+        EXEC sp_OAMethod @Object, 'responseText', @ResponseText OUTPUT;
+
+        PRINT @ResponseText;
+
+       IF CHARINDEX('ko',(SELECT @ResponseText)) > 0
+		BEGIN
+			INSERT INTO dbo.Z_APP_Messaggi
+				(ZAPP_Messaggio)
+				VALUES('{
+           "QUERY":"' + @OperationType + '",
+           "TABLE":"MB_IVA",
+           "DATA":{
+                "MBIV_ID": "' + CAST(ISNULL(@MBIV_ID, 0) AS VARCHAR) + '",
+                "MBIV_IVA": "' + CAST(ISNULL(@MBIV_IVA, 0) AS VARCHAR) + '",
+				"MBIV_Perc": "' + CAST(ISNULL(@MBIV_Perc, 0) AS VARCHAR) + '",				
+                "MBIV_Descr": "' + ISNULL(@MBIV_Descr, '') +'"
+            }
+        }');
+		 SELECT @ResponseText As 'Message'--Creare una tabella messaggi ed aggiungere qui i messaggi da inserire che non sono passati,
+		 --se ritorna ko vuol dire che non è stato salvato il messaggio per nessun dispositivo, quindi quando si collega un client 
+		 --va fatto il controllo sulla tabella messaggi e se sono presenti si esegue la funzione che inserisce un messaggio per ogni device
+		 --e prova ad inviarli.
+		END
+		ELSE
+		BEGIN
+		 --SELECT @ResponseText As 'Employee Details'
+			print @query;
+		END
+		EXEC sp_OADestroy @Object
+       
+        FETCH NEXT FROM cursore INTO 
+              @MBIV_ID, @MBIV_IVA, @MBIV_Perc, @MBIV_Descr, @OperationType;
+    END
+
+    CLOSE cursore;
+    DEALLOCATE cursore;
+
+    EXEC sp_OADestroy @Object;
+END;
+```
+
+  * Soluzioni Pagamento
+```
+CREATE TRIGGER [dbo].[Z_APP_MB_SolPag] ON [dbo].[MB_SolPag]
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    PRINT 'ESEGUO TRIGGER';
+    SET NOCOUNT ON;
+
+    DECLARE @URL NVARCHAR(MAX);
+    SELECT @URL = ZIAP_IndirizzoServer FROM Z_APP_info;
+    DECLARE @Object AS INT;
+    DECLARE @ResponseText AS VARCHAR(8000);
+	DECLARE @query AS VARCHAR(5000);
+    DECLARE @OperationType VARCHAR(10);
+    DECLARE @MBSP_ID as INT;
+    DECLARE @MBSP_Soluzione as INT;
+   	DECLARE @MBSP_Code as INT;
+    DECLARE @MBSP_Descr as VARCHAR(255);
+
+    DECLARE @DettagliModifiche TABLE (
+        MBSP_ID INT,
+        MBSP_Soluzione INT,
+        MBSP_Code INT,
+        MBSP_Descr VARCHAR(255),
+        OperationType VARCHAR(10)
+    );
+
+    IF EXISTS (SELECT * FROM inserted) AND NOT EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            MBSP_ID, MBSP_Soluzione, MBSP_Code,MBSP_Descr,'INSERT'
+        FROM inserted;
+    END
+
+    IF EXISTS (SELECT * FROM inserted) AND EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            i.MBSP_ID, i.MBSP_Soluzione, i.MBSP_Code, i.MBSP_Descr,'UPDATE'
+        FROM inserted i
+        JOIN deleted d ON i.MBSP_ID = d.MBSP_ID;
+    END
+
+    IF EXISTS (SELECT * FROM deleted) AND NOT EXISTS (SELECT * FROM inserted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            MBSP_ID, MBSP_Soluzione, MBSP_Code,MBSP_Descr,'DELETE'
+        FROM deleted;
+    END
+
+    DECLARE cursore CURSOR FOR 
+    SELECT * FROM @DettagliModifiche;
+
+    OPEN cursore;
+    FETCH NEXT FROM cursore INTO 
+         @MBSP_ID, @MBSP_Soluzione, @MBSP_Code, @MBSP_Descr, @OperationType;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+	    PRINT('SONO DENTRO IL CURSORE');
+	   
+        DECLARE @body AS VARCHAR(8000) = '{
+           "QUERY":"' + @OperationType + '",
+           "TABLE":"MB_SolPag",
+           "DATA":{
+                "MBSP_ID": "' + CAST(ISNULL(@MBSP_ID, 0) AS VARCHAR) + '",
+                "MBSP_Soluzione": "' + CAST(ISNULL(@MBSP_Soluzione, 0) AS VARCHAR) + '",
+				"MBSP_Code": "' + CAST(ISNULL(@MBSP_Code, 0) AS VARCHAR) + '",				
+                "MBSP_Descr": "' + ISNULL(@MBSP_Descr, '') +'"
+            }
+        }' -- JSON body for HTTP POST similar to the first trigger
+		print(@body);
+        EXEC sp_OACreate 'MSXML2.XMLHTTP', @Object OUT;
+        EXEC sp_OAMethod @Object, 'open', NULL, 'post', @URL, 'false';
+        EXEC sp_OAMethod @Object, 'setRequestHeader', NULL, 'Content-Type', 'application/json';
+        EXEC sp_OAMethod @Object, 'send', NULL, @body;
+        EXEC sp_OAMethod @Object, 'responseText', @ResponseText OUTPUT;
+
+        PRINT @ResponseText;
+
+       IF CHARINDEX('ko',(SELECT @ResponseText)) > 0
+		BEGIN
+			INSERT INTO dbo.Z_APP_Messaggi
+				(ZAPP_Messaggio)
+				VALUES('{
+           "QUERY":"' + @OperationType + '",
+           "TABLE":"MB_SolPag",
+           "DATA":{
+                "MBSP_ID": "' + CAST(ISNULL(@MBSP_ID, 0) AS VARCHAR) + '",
+                "MBSP_Soluzione": "' + CAST(ISNULL(@MBSP_Soluzione, 0) AS VARCHAR) + '",
+				"MBSP_Code": "' + CAST(ISNULL(@MBSP_Code, 0) AS VARCHAR) + '",				
+                "MBSP_Descr": "' + ISNULL(@MBSP_Descr, '') +'"
+            }
+        }');
+		 SELECT @ResponseText As 'Message'--Creare una tabella messaggi ed aggiungere qui i messaggi da inserire che non sono passati,
+		 --se ritorna ko vuol dire che non è stato salvato il messaggio per nessun dispositivo, quindi quando si collega un client 
+		 --va fatto il controllo sulla tabella messaggi e se sono presenti si esegue la funzione che inserisce un messaggio per ogni device
+		 --e prova ad inviarli.
+		END
+		ELSE
+		BEGIN
+		 --SELECT @ResponseText As 'Employee Details'
+			print @query;
+		END
+		EXEC sp_OADestroy @Object
+       
+        FETCH NEXT FROM cursore INTO 
+              @MBSP_ID, @MBSP_Soluzione, @MBSP_Code, @MBSP_Descr, @OperationType;
+    END
+
+    CLOSE cursore;
+    DEALLOCATE cursore;
+
+    EXEC sp_OADestroy @Object;
+END;
+```
+
+  * Tipo Articolo VA
+```
+CREATE TRIGGER [dbo].[Z_APP_MB_TipiArticoloVA] ON [dbo].[MB_TipiArticoloVA]
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    PRINT 'ESEGUO TRIGGER';
+    SET NOCOUNT ON;
+
+    DECLARE @URL NVARCHAR(MAX);
+    SELECT @URL = ZIAP_IndirizzoServer FROM Z_APP_info;
+    DECLARE @Object AS INT;
+    DECLARE @ResponseText AS VARCHAR(8000);
+	DECLARE @query AS VARCHAR(5000);
+    DECLARE @OperationType VARCHAR(10);
+    DECLARE @MBTA_ID as INT;
+    DECLARE @MBTA_Codice as INT;
+    DECLARE @MBTA_Descr as VARCHAR(255);
+
+    DECLARE @DettagliModifiche TABLE (
+        MBTA_ID INT,
+        MBTA_Codice INT,
+        MBTA_Descr VARCHAR(255),
+        OperationType VARCHAR(10)
+    );
+
+    IF EXISTS (SELECT * FROM inserted) AND NOT EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            MBTA_ID, MBTA_Codice, MBTA_Descr, 'INSERT'
+        FROM inserted;
+    END
+
+    IF EXISTS (SELECT * FROM inserted) AND EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            i.MBTA_ID, i.MBTA_Codice, i.MBTA_Descr,'UPDATE'
+        FROM inserted i
+        JOIN deleted d ON i.MBTA_ID = d.MBTA_ID;
+    END
+
+    IF EXISTS (SELECT * FROM deleted) AND NOT EXISTS (SELECT * FROM inserted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            MBTA_ID, MBTA_Codice, MBTA_Descr, 'DELETE'
+        FROM deleted;
+    END
+
+    DECLARE cursore CURSOR FOR 
+    SELECT * FROM @DettagliModifiche;
+
+    OPEN cursore;
+    FETCH NEXT FROM cursore INTO 
+        @MBTA_ID, @MBTA_Codice, @MBTA_Descr,  @OperationType;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+	    PRINT('SONO DENTRO IL CURSORE');
+	   
+        DECLARE @body AS VARCHAR(8000) = '{
+           "QUERY":"' + @OperationType + '",
+           "TABLE":"MB_TipiArticoloVA",
+           "DATA":{
+                "MBTA_ID": "' + CAST(ISNULL(@MBTA_ID, 0) AS VARCHAR) + '",
+                "MBTA_Codice": "' + CAST(ISNULL(@MBTA_Codice, 0) AS VARCHAR) + '",
+                "MBTA_Descr": "' + ISNULL(@MBTA_Descr, '') +'"
+            }
+        }' -- JSON body for HTTP POST similar to the first trigger
+		print(@body);
+        EXEC sp_OACreate 'MSXML2.XMLHTTP', @Object OUT;
+        EXEC sp_OAMethod @Object, 'open', NULL, 'post', @URL, 'false';
+        EXEC sp_OAMethod @Object, 'setRequestHeader', NULL, 'Content-Type', 'application/json';
+        EXEC sp_OAMethod @Object, 'send', NULL, @body;
+        EXEC sp_OAMethod @Object, 'responseText', @ResponseText OUTPUT;
+
+        PRINT @ResponseText;
+
+       IF CHARINDEX('ko',(SELECT @ResponseText)) > 0
+		BEGIN
+			INSERT INTO dbo.Z_APP_Messaggi
+				(ZAPP_Messaggio)
+				VALUES('{
+           "QUERY":"' + @OperationType + '",
+           "TABLE":"MB_TipiArticoloVA",
+           "DATA":{
+                "MBTA_ID": "' + CAST(ISNULL(@MBTA_ID, 0) AS VARCHAR) + '",
+                "MBTA_Codice": "' + CAST(ISNULL(@MBTA_Codice, 0) AS VARCHAR) + '",
+                "MBTA_Descr": "' + ISNULL(@MBTA_Descr, '') +'"
+            }
+        }');
+		 SELECT @ResponseText As 'Message'--Creare una tabella messaggi ed aggiungere qui i messaggi da inserire che non sono passati,
+		 --se ritorna ko vuol dire che non è stato salvato il messaggio per nessun dispositivo, quindi quando si collega un client 
+		 --va fatto il controllo sulla tabella messaggi e se sono presenti si esegue la funzione che inserisce un messaggio per ogni device
+		 --e prova ad inviarli.
+		END
+		ELSE
+		BEGIN
+		 --SELECT @ResponseText As 'Employee Details'
+			print @query;
+		END
+		EXEC sp_OADestroy @Object
+       
+        FETCH NEXT FROM cursore INTO 
+            @MBTA_ID, @MBTA_Codice, @MBTA_Descr,  @OperationType;
+    END
+
+    CLOSE cursore;
+    DEALLOCATE cursore;
+
+    EXEC sp_OADestroy @Object;
+END;
+
+```
+  * Tipo Conto
+```
+CREATE TRIGGER [dbo].[Z_APP_MB_TipoConto] ON [dbo].[MB_TipoConto]
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    PRINT 'ESEGUO TRIGGER';
+    SET NOCOUNT ON;
+
+    DECLARE @URL NVARCHAR(MAX);
+    SELECT @URL = ZIAP_IndirizzoServer FROM Z_APP_info;
+    DECLARE @Object AS INT;
+    DECLARE @ResponseText AS VARCHAR(8000);
+	DECLARE @query AS VARCHAR(5000);
+    DECLARE @OperationType VARCHAR(10);
+    DECLARE @MBTC_Id as INT;
+    DECLARE @MBTC_TipoConto as INT;
+   	DECLARE @MBTC_Descr as VARCHAR(255);
+    DECLARE @MBTC_Code as VARCHAR(255);
+
+    DECLARE @DettagliModifiche TABLE (
+        MBTC_Id INT,
+        MBTC_TipoConto INT,
+        MBTC_Descr VARCHAR(255),
+        MBTC_Code VARCHAR(255),
+        OperationType VARCHAR(10)
+    );
+
+    IF EXISTS (SELECT * FROM inserted) AND NOT EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            MBTC_Id, MBTC_TipoConto, MBTC_Descr,MBTC_Code,'INSERT'
+        FROM inserted;
+    END
+
+    IF EXISTS (SELECT * FROM inserted) AND EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+           i.MBTC_Id, i.MBTC_TipoConto, i.MBTC_Descr, i.MBTC_Code,'UPDATE'
+        FROM inserted i
+        JOIN deleted d ON i.MBTC_Id = d.MBTC_Id;
+    END
+
+    IF EXISTS (SELECT * FROM deleted) AND NOT EXISTS (SELECT * FROM inserted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            MBTC_Id, MBTC_TipoConto, MBTC_Descr,MBTC_Code,'DELETE'
+        FROM deleted;
+    END
+
+    DECLARE cursore CURSOR FOR 
+    SELECT * FROM @DettagliModifiche;
+
+    OPEN cursore;
+    FETCH NEXT FROM cursore INTO 
+         @MBTC_Id, @MBTC_TipoConto, @MBTC_Descr, @MBTC_Code, @OperationType;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+	    PRINT('SONO DENTRO IL CURSORE');
+	   
+        DECLARE @body AS VARCHAR(8000) = '{
+           "QUERY":"' + @OperationType + '",
+           "TABLE":"MB_TipoConto",
+           "DATA":{
+                "MBTC_Id": "' + CAST(ISNULL(@MBTC_Id, 0) AS VARCHAR) + '",
+                "MBTC_TipoConto": "' + CAST(ISNULL(@MBTC_TipoConto, 0) AS VARCHAR) + '",
+				"MBTC_Descr": "' + ISNULL(@MBTC_Descr, '') + '",				
+                "MBTC_Code": "' + ISNULL(@MBTC_Code, '') +'"
+            }
+        }' -- JSON body for HTTP POST similar to the first trigger
+		print(@body);
+        EXEC sp_OACreate 'MSXML2.XMLHTTP', @Object OUT;
+        EXEC sp_OAMethod @Object, 'open', NULL, 'post', @URL, 'false';
+        EXEC sp_OAMethod @Object, 'setRequestHeader', NULL, 'Content-Type', 'application/json';
+        EXEC sp_OAMethod @Object, 'send', NULL, @body;
+        EXEC sp_OAMethod @Object, 'responseText', @ResponseText OUTPUT;
+
+        PRINT @ResponseText;
+
+       IF CHARINDEX('ko',(SELECT @ResponseText)) > 0
+		BEGIN
+			INSERT INTO dbo.Z_APP_Messaggi
+				(ZAPP_Messaggio)
+				VALUES('{
+           "QUERY":"' + @OperationType + '",
+           "TABLE":"MB_TipoConto",
+           "DATA":{
+                "MBTC_Id": "' + CAST(ISNULL(@MBTC_Id, 0) AS VARCHAR) + '",
+                "MBTC_TipoConto": "' + CAST(ISNULL(@MBTC_TipoConto, 0) AS VARCHAR) + '",
+				"MBTC_Descr": "' + ISNULL(@MBTC_Descr, '') + '",				
+                "MBTC_Code": "' + ISNULL(@MBTC_Code, '') +'"
+            }
+        }');
+		 SELECT @ResponseText As 'Message'--Creare una tabella messaggi ed aggiungere qui i messaggi da inserire che non sono passati,
+		 --se ritorna ko vuol dire che non è stato salvato il messaggio per nessun dispositivo, quindi quando si collega un client 
+		 --va fatto il controllo sulla tabella messaggi e se sono presenti si esegue la funzione che inserisce un messaggio per ogni device
+		 --e prova ad inviarli.
+		END
+		ELSE
+		BEGIN
+		 --SELECT @ResponseText As 'Employee Details'
+			print @query;
+		END
+		EXEC sp_OADestroy @Object
+       
+        FETCH NEXT FROM cursore INTO 
+             @MBTC_Id, @MBTC_TipoConto, @MBTC_Descr, @MBTC_Code, @OperationType;
+    END
+
+    CLOSE cursore;
+    DEALLOCATE cursore;
+
+    EXEC sp_OADestroy @Object;
+END;
+```
+  * Tipo Pagamento
+```
+CREATE TRIGGER [dbo].[Z_APP_MB_TipoPag] ON [dbo].[MB_TipoPag]
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    PRINT 'ESEGUO TRIGGER';
+    SET NOCOUNT ON;
+
+    DECLARE @URL NVARCHAR(MAX);
+    SELECT @URL = ZIAP_IndirizzoServer FROM Z_APP_info;
+    DECLARE @Object AS INT;
+    DECLARE @ResponseText AS VARCHAR(8000);
+	DECLARE @query AS VARCHAR(5000);
+    DECLARE @OperationType VARCHAR(10);
+    DECLARE @MBTP_ID as INT;
+    DECLARE @MBTP_Pagamento as INT;
+   	DECLARE @MBTP_Effetto as INT;
+    DECLARE @MBTP_Descr as VARCHAR(255);
+
+    DECLARE @DettagliModifiche TABLE (
+        MBTP_ID INT,
+        MBTP_Pagamento INT,
+        MBTP_Effetto INT,
+        MBTP_Descr VARCHAR(255),
+        OperationType VARCHAR(10)
+    );
+
+    IF EXISTS (SELECT * FROM inserted) AND NOT EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            MBTP_ID, MBTP_Pagamento, MBTP_Effetto,MBTP_Descr,'INSERT'
+        FROM inserted;
+    END
+
+    IF EXISTS (SELECT * FROM inserted) AND EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            i.MBTP_ID, i.MBTP_Pagamento, i.MBTP_Effetto, i.MBTP_Descr,'UPDATE'
+        FROM inserted i
+        JOIN deleted d ON i.MBTP_ID = d.MBTP_ID;
+    END
+
+    IF EXISTS (SELECT * FROM deleted) AND NOT EXISTS (SELECT * FROM inserted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            MBTP_ID, MBTP_Pagamento, MBTP_Effetto,MBTP_Descr,'DELETE'
+        FROM deleted;
+    END
+
+    DECLARE cursore CURSOR FOR 
+    SELECT * FROM @DettagliModifiche;
+
+    OPEN cursore;
+    FETCH NEXT FROM cursore INTO 
+         @MBTP_ID, @MBTP_Pagamento, @MBTP_Effetto, @MBTP_Descr, @OperationType;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+	    PRINT('SONO DENTRO IL CURSORE');
+	   
+        DECLARE @body AS VARCHAR(8000) = '{
+           "QUERY":"' + @OperationType + '",
+           "TABLE":"MB_TipoPag",
+           "DATA":{
+                "MBTP_ID": "' + CAST(ISNULL(@MBTP_ID, 0) AS VARCHAR) + '",
+                "MBTP_Pagamento": "' + CAST(ISNULL(@MBTP_Pagamento, 0) AS VARCHAR) + '",
+				"MBTP_Effetto": "' + CAST(ISNULL(@MBTP_Effetto, 0) AS VARCHAR) + '",				
+                "MBTP_Descr": "' + ISNULL(@MBTP_Descr, '') +'"
+            }
+        }' -- JSON body for HTTP POST similar to the first trigger
+		print(@body);
+        EXEC sp_OACreate 'MSXML2.XMLHTTP', @Object OUT;
+        EXEC sp_OAMethod @Object, 'open', NULL, 'post', @URL, 'false';
+        EXEC sp_OAMethod @Object, 'setRequestHeader', NULL, 'Content-Type', 'application/json';
+        EXEC sp_OAMethod @Object, 'send', NULL, @body;
+        EXEC sp_OAMethod @Object, 'responseText', @ResponseText OUTPUT;
+
+        PRINT @ResponseText;
+
+       IF CHARINDEX('ko',(SELECT @ResponseText)) > 0
+		BEGIN
+			INSERT INTO dbo.Z_APP_Messaggi
+				(ZAPP_Messaggio)
+				VALUES('{
+           "QUERY":"' + @OperationType + '",
+           "TABLE":"MB_TipoPag",
+           "DATA":{
+                "MBTP_ID": "' + CAST(ISNULL(@MBTP_ID, 0) AS VARCHAR) + '",
+                "MBTP_Pagamento": "' + CAST(ISNULL(@MBTP_Pagamento, 0) AS VARCHAR) + '",
+				"MBTP_Effetto": "' + CAST(ISNULL(@MBTP_Effetto, 0) AS VARCHAR) + '",				
+                "MBTP_Descr": "' + ISNULL(@MBTP_Descr, '') +'"
+            }
+        }');
+		 SELECT @ResponseText As 'Message'--Creare una tabella messaggi ed aggiungere qui i messaggi da inserire che non sono passati,
+		 --se ritorna ko vuol dire che non è stato salvato il messaggio per nessun dispositivo, quindi quando si collega un client 
+		 --va fatto il controllo sulla tabella messaggi e se sono presenti si esegue la funzione che inserisce un messaggio per ogni device
+		 --e prova ad inviarli.
+		END
+		ELSE
+		BEGIN
+		 --SELECT @ResponseText As 'Employee Details'
+			print @query;
+		END
+		EXEC sp_OADestroy @Object
+       
+        FETCH NEXT FROM cursore INTO 
+              @MBTP_ID, @MBTP_Pagamento, @MBTP_Effetto, @MBTP_Descr, @OperationType;
+    END
+
+    CLOSE cursore;
+    DEALLOCATE cursore;
+
+    EXEC sp_OADestroy @Object;
+END;
+```
+  * Pagamenti Ordine
+```
+CREATE TRIGGER [dbo].[Z_APP_OC_Pagam] ON [dbo].[OC_Pagam]
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    PRINT 'ESEGUO TRIGGER';
+    SET NOCOUNT ON;
+
+    DECLARE @URL NVARCHAR(MAX);
+    SELECT @URL = ZIAP_IndirizzoServer FROM Z_APP_info;
+    DECLARE @Object AS INT;
+    DECLARE @ResponseText AS VARCHAR(8000);
+	DECLARE @query AS VARCHAR(5000);
+    DECLARE @OperationType VARCHAR(10);
+    DECLARE @OCPG_ID as INT;
+    DECLARE @OCPG_OCAN_ID as INT;
+   	DECLARE @OCPG_MBTP_ID as INT;
+    DECLARE @OCPG_MBSP_ID as INT;
+
+    DECLARE @DettagliModifiche TABLE (
+        OCPG_ID INT,
+        OCPG_OCAN_ID INT,
+        OCPG_MBTP_ID INT,
+        OCPG_MBSP_ID INT,
+        OperationType VARCHAR(10)
+    );
+
+    IF EXISTS (SELECT * FROM inserted) AND NOT EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            OCPG_ID, OCPG_OCAN_ID, OCPG_MBTP_ID,OCPG_MBSP_ID,'INSERT'
+        FROM inserted;
+    END
+
+    IF EXISTS (SELECT * FROM inserted) AND EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+           i.OCPG_ID, i.OCPG_OCAN_ID, i.OCPG_MBTP_ID, i.OCPG_MBSP_ID,'UPDATE'
+        FROM inserted i
+        JOIN deleted d ON i.OCPG_ID = d.OCPG_ID;
+    END
+
+    IF EXISTS (SELECT * FROM deleted) AND NOT EXISTS (SELECT * FROM inserted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            OCPG_ID, OCPG_OCAN_ID, OCPG_MBTP_ID,OCPG_MBSP_ID,'DELETE'
+        FROM deleted;
+    END
+
+    DECLARE cursore CURSOR FOR 
+    SELECT * FROM @DettagliModifiche;
+
+    OPEN cursore;
+    FETCH NEXT FROM cursore INTO 
+         @OCPG_ID, @OCPG_OCAN_ID, @OCPG_MBTP_ID, @OCPG_MBSP_ID, @OperationType;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+	    IF EXISTS (SELECT * FROM Z_APP_dispositivi
+			WHERE ZAPPD_OCTI_ID IN (
+				SELECT OCAN_OCTI_ID FROM OC_pagam
+				JOIN OC_Anag ON OCPG_OCAN_ID=OCAN_ID
+				WHERE OCPG_ID=@OCPG_ID	
+			)
+		)
+		BEGIN
+			
+			PRINT('SONO DENTRO IL CURSORE');
+		   
+	        DECLARE @body AS VARCHAR(8000) = '{
+	           "QUERY":"' + @OperationType + '",
+	           "TABLE":"OC_Pagam",
+	           "DATA":{
+	                "OCPG_ID": "' + CAST(ISNULL(@OCPG_ID, 0) AS VARCHAR) + '",
+	                "OCPG_OCAN_ID": "' + CAST(ISNULL(@OCPG_OCAN_ID, 0) AS VARCHAR) + '",
+					"OCPG_MBTP_ID": "' + CAST(ISNULL(@OCPG_MBTP_ID, 0) AS VARCHAR) + '",				
+	                "OCPG_MBSP_ID": "' + CAST(ISNULL(@OCPG_MBSP_ID, 0) AS VARCHAR) +'"
+	            }
+	        }' -- JSON body for HTTP POST similar to the first trigger
+			print(@body);
+	        EXEC sp_OACreate 'MSXML2.XMLHTTP', @Object OUT;
+	        EXEC sp_OAMethod @Object, 'open', NULL, 'post', @URL, 'false';
+	        EXEC sp_OAMethod @Object, 'setRequestHeader', NULL, 'Content-Type', 'application/json';
+	        EXEC sp_OAMethod @Object, 'send', NULL, @body;
+	        EXEC sp_OAMethod @Object, 'responseText', @ResponseText OUTPUT;
+	
+	        PRINT @ResponseText;
+	
+	       IF CHARINDEX('ko',(SELECT @ResponseText)) > 0
+			BEGIN
+				INSERT INTO dbo.Z_APP_Messaggi
+					(ZAPP_Messaggio)
+					VALUES('{
+	           "QUERY":"' + @OperationType + '",
+	           "TABLE":"OC_Pagam",
+	           "DATA":{
+	                "OCPG_ID": "' + CAST(ISNULL(@OCPG_ID, 0) AS VARCHAR) + '",
+	                "OCPG_OCAN_ID": "' + CAST(ISNULL(@OCPG_OCAN_ID, 0) AS VARCHAR) + '",
+					"OCPG_MBTP_ID": "' + CAST(ISNULL(@OCPG_MBTP_ID, 0) AS VARCHAR) + '",				
+	                "OCPG_MBSP_ID": "' + CAST(ISNULL(@OCPG_MBSP_ID, 0) AS VARCHAR) +'"
+	            }
+	        }');
+			 SELECT @ResponseText As 'Message'--Creare una tabella messaggi ed aggiungere qui i messaggi da inserire che non sono passati,
+			 --se ritorna ko vuol dire che non è stato salvato il messaggio per nessun dispositivo, quindi quando si collega un client 
+			 --va fatto il controllo sulla tabella messaggi e se sono presenti si esegue la funzione che inserisce un messaggio per ogni device
+			 --e prova ad inviarli.
+			END
+			ELSE
+			BEGIN
+			 --SELECT @ResponseText As 'Employee Details'
+				print @query;
+			END
+			EXEC sp_OADestroy @Object
+		END
+		
+       
+        FETCH NEXT FROM cursore INTO 
+             @OCPG_ID, @OCPG_OCAN_ID, @OCPG_MBTP_ID, @OCPG_MBSP_ID, @OperationType;
+    END
+
+    CLOSE cursore;
+    DEALLOCATE cursore;
+
+    IF @Object IS NOT NULL
+	BEGIN
+	    EXEC sp_OADestroy @Object;
+	END
+
+END;
+```
+  * Tipo Ordine
+```
+CREATE TRIGGER [dbo].[Z_APP_OC_Tipo] ON [dbo].[OC_Tipo]
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    PRINT 'ESEGUO TRIGGER';
+    SET NOCOUNT ON;
+
+    DECLARE @URL NVARCHAR(MAX);
+    SELECT @URL = ZIAP_IndirizzoServer FROM Z_APP_info;
+    DECLARE @Object AS INT;
+    DECLARE @ResponseText AS VARCHAR(8000);
+	DECLARE @query AS VARCHAR(5000);
+    DECLARE @OperationType VARCHAR(10);
+    DECLARE @OCTI_ID as INT;
+    DECLARE @OCTI_TipNum as INT;
+   	DECLARE @OCTI_Tipo as INT;
+    DECLARE @OCTI_Descr as VARCHAR(255);
+
+    DECLARE @DettagliModifiche TABLE (
+        OCTI_ID INT,
+        OCTI_TipNum INT,
+        OCTI_Tipo INT,
+        OCTI_Descr VARCHAR(255),
+        OperationType VARCHAR(10)
+    );
+
+    IF EXISTS (SELECT * FROM inserted) AND NOT EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            OCTI_ID, OCTI_TipNum, OCTI_Tipo,OCTI_Descr,'INSERT'
+        FROM inserted;
+    END
+
+    IF EXISTS (SELECT * FROM inserted) AND EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            i.OCTI_ID, i.OCTI_TipNum,i.OCTI_Tipo,i.OCTI_Descr,'UPDATE'
+        FROM inserted i
+        JOIN deleted d ON i.OCTI_ID = d.OCTI_ID;
+    END
+
+    IF EXISTS (SELECT * FROM deleted) AND NOT EXISTS (SELECT * FROM inserted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            OCTI_ID, OCTI_TipNum, OCTI_Tipo,OCTI_Descr, 'DELETE'
+        FROM deleted;
+    END
+
+    DECLARE cursore CURSOR FOR 
+    SELECT * FROM @DettagliModifiche;
+
+    OPEN cursore;
+    FETCH NEXT FROM cursore INTO 
+        @OCTI_ID, @OCTI_TipNum, @OCTI_Tipo, @OCTI_Descr, @OperationType;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+	    PRINT('SONO DENTRO IL CURSORE');
+	   
+        DECLARE @body AS VARCHAR(8000) = '{
+           "QUERY":"' + @OperationType + '",
+           "TABLE":"OC_Tipo",
+           "DATA":{
+                "OCTI_ID": "' + CAST(ISNULL(@OCTI_ID, 0) AS VARCHAR) + '",
+                "OCTI_TipNum": "' + CAST(ISNULL(@OCTI_TipNum, 0) AS VARCHAR) + '",
+				"OCTI_Tipo": "' + CAST(ISNULL(@OCTI_Tipo, 0) AS VARCHAR) + '",				
+                "OCTI_Descr": "' + ISNULL(@OCTI_Descr, '') +'"
+            }
+        }' -- JSON body for HTTP POST similar to the first trigger
+		print(@body);
+        EXEC sp_OACreate 'MSXML2.XMLHTTP', @Object OUT;
+        EXEC sp_OAMethod @Object, 'open', NULL, 'post', @URL, 'false';
+        EXEC sp_OAMethod @Object, 'setRequestHeader', NULL, 'Content-Type', 'application/json';
+        EXEC sp_OAMethod @Object, 'send', NULL, @body;
+        EXEC sp_OAMethod @Object, 'responseText', @ResponseText OUTPUT;
+
+        PRINT @ResponseText;
+
+       IF CHARINDEX('ko',(SELECT @ResponseText)) > 0
+		BEGIN
+			INSERT INTO dbo.Z_APP_Messaggi
+				(ZAPP_Messaggio)
+				VALUES('{
+           "QUERY":"' + @OperationType + '",
+           "TABLE":OC_AgeArtic oaa _Tipo",
+           "DATA":{
+                "OCTI_ID": "' + CAST(ISNULL(@OCTI_ID, 0) AS VARCHAR) + '",
+                "OCTI_TipNum": "' + CAST(ISNULL(@OCTI_TipNum, 0) AS VARCHAR) + '",
+				"OCTI_Tipo": "' + CAST(ISNULL(@OCTI_Tipo, 0) AS VARCHAR) + '",				
+                "OCTI_Descr": "' + ISNULL(@OCTI_Descr, '') +'"
+            }
+        }');
+		 SELECT @ResponseText As 'Message'--Creare una tabella messaggi ed aggiungere qui i messaggi da inserire che non sono passati,
+		 --se ritorna ko vuol dire che non è stato salvato il messaggio per nessun dispositivo, quindi quando si collega un client 
+		 --va fatto il controllo sulla tabella messaggi e se sono presenti si esegue la funzione che inserisce un messaggio per ogni device
+		 --e prova ad inviarli.
+		END
+		ELSE
+		BEGIN
+		 --SELECT @ResponseText As 'Employee Details'
+			print @query;
+		END
+		EXEC sp_OADestroy @Object
+       
+        FETCH NEXT FROM cursore INTO 
+             @OCTI_ID, @OCTI_TipNum, @OCTI_Tipo, @OCTI_Descr, @OperationType;
+    END
+
+    CLOSE cursore;
+    DEALLOCATE cursore;
+
+    EXEC sp_OADestroy @Object;
+END;
+```
+  * Partite
+```
+CREATE TRIGGER [dbo].[Z_APP_Partite]
+ON [dbo].[CA_Partite]
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+PRINT 'ESEGUO TRIGGER';
+	SET NOCOUNT ON;
+	DECLARE @URL NVARCHAR(MAX);
+	SELECT @URL=ZIAP_IndirizzoServer FROM Z_APP_info;
+	DECLARE @Object AS INT;
+	DECLARE @ResponseText AS VARCHAR(8000);
+	DECLARE @query AS VARCHAR(5000);
+	DECLARE @CAPA_ID as INT;
+	DECLARE @CAPA_CASP_Stato as INT;
+	DECLARE @CAPA_MBPC_ID as INT;
+	DECLARE @CAPA_MBDI_ID as INT;
+	DECLARE @CAPA_MBTD_ID as INT;
+	DECLARE @CAPA_NumPart as INT;
+	DECLARE @CAPA_AnnoPart as INT;
+	DECLARE @CAPA_Scadenza as datetime;
+	DECLARE @CAPA_DataVal as datetime;
+	DECLARE @CAPA_DataDoc as datetime;
+	DECLARE @CAPA_ImportoDare as DECIMAL(28,2);
+	DECLARE @CAPA_ImportoAvere as DECIMAL(28,2);
+	DECLARE @CAPA_Residuo as DECIMAL(28,2);
+	DECLARE @CAPA_Cambio as INT
+	DECLARE @OperationType VARCHAR(10);
+	
+	DECLARE @DettagliModifiche TABLE (
+        CAPA_ID INT,
+        CAPA_CASP_Stato INT,
+        CAPA_MBPC_ID INT,
+        CAPA_MBDI_ID INT,
+        CAPA_MBTD_ID INT,
+        CAPA_NumPart INT,
+        CAPA_AnnoPart INT,
+        CAPA_Scadenza datetime,
+        CAPA_DataVal datetime,
+        CAPA_DataDoc datetime,
+        CAPA_ImportoDare DECIMAL(28,2),
+        CAPA_ImportoAvere DECIMAL(28,2),
+        CAPA_Residuo DECIMAL(28,2),
+        CAPA_Cambio INT,
+        OperationType VARCHAR(10)
+	    );
+	   
+    -- Handle INSERT
+    IF EXISTS (SELECT * FROM inserted) AND NOT EXISTS (SELECT * FROM deleted)
+  	BEGIN
+	 	
+	
+	    -- Inserisci le righe inserite nella variabile di tipo tabella
+	    INSERT INTO @DettagliModifiche
+	    SELECT 
+	        CAPA_ID, CAPA_CASP_Stato, CAPA_MBPC_ID, CAPA_MBDI_ID, CAPA_MBTD_ID,
+	        CAPA_NumPart, CAPA_AnnoPart,CAPA_Scadenza, 
+	         CAPA_DataVal,CAPA_DataDoc,
+	        CAPA_ImportoDare, CAPA_ImportoAvere, CAPA_Residuo, CAPA_Cambio,'INSERT'
+	    FROM inserted;   
+
+        -- Esempio: Invio di un'email per l'inserimento
+    END
+    -- Handle UPDATE
+    IF EXISTS (SELECT * FROM inserted) AND EXISTS (SELECT * FROM deleted)
+    BEGIN
+      INSERT INTO @DettagliModifiche
+        SELECT 
+            i.CAPA_ID, i.CAPA_CASP_Stato, i.CAPA_MBPC_ID, i.CAPA_MBDI_ID, i.CAPA_MBTD_ID,
+            i.CAPA_NumPart, i.CAPA_AnnoPart, i.CAPA_Scadenza, i.CAPA_DataVal, i.CAPA_DataDoc,
+            i.CAPA_ImportoDare, i.CAPA_ImportoAvere, i.CAPA_Residuo, i.CAPA_Cambio,
+            'UPDATE'
+        FROM inserted i
+        JOIN deleted d ON i.CAPA_ID = d.CAPA_ID
+        WHERE i.CAPA_CASP_Stato != d.CAPA_CASP_Stato 
+           OR i.CAPA_MBPC_ID != d.CAPA_MBPC_ID
+           OR i.CAPA_MBDI_ID != d.CAPA_MBDI_ID
+           OR i.CAPA_MBTD_ID != d.CAPA_MBTD_ID
+           OR i.CAPA_NumPart != d.CAPA_NumPart
+           OR i.CAPA_AnnoPart != d.CAPA_AnnoPart
+           OR i.CAPA_Scadenza != d.CAPA_Scadenza
+           OR i.CAPA_DataVal != d.CAPA_DataVal
+           OR i.CAPA_DataDoc != d.CAPA_DataDoc
+           OR i.CAPA_ImportoDare != d.CAPA_ImportoDare
+           OR i.CAPA_ImportoAvere != d.CAPA_ImportoAvere
+           OR i.CAPA_Residuo != d.CAPA_Residuo
+           OR i.CAPA_Cambio != d.CAPA_Cambio
+    END
+    -- Handle DELETE
+    IF EXISTS (SELECT * FROM deleted) AND NOT EXISTS (SELECT * FROM inserted)
+    BEGIN
+        -- Qui puoi gestire il DELETE
+        -- Esempio: Archiviazione dei dati cancellati
+	    INSERT INTO @DettagliModifiche
+        SELECT 
+            CAPA_ID, CAPA_CASP_Stato, CAPA_MBPC_ID, CAPA_MBDI_ID, CAPA_MBTD_ID,
+            CAPA_NumPart, CAPA_AnnoPart, CAPA_Scadenza, CAPA_DataVal, CAPA_DataDoc,
+            CAPA_ImportoDare, CAPA_ImportoAvere, CAPA_Residuo, CAPA_Cambio,
+            'DELETE'
+        FROM deleted;
+    END
+    
+    DECLARE cursore CURSOR FOR 
+    SELECT ISNULL(CAPA_ID,-1) as CAPA_ID, ISNULL(CAPA_CASP_Stato,-1) as CAPA_CASP_Stato, ISNULL(CAPA_MBPC_ID,-1) as CAPA_MBPC_ID, ISNULL(CAPA_MBDI_ID,-1) as CAPA_MBDI_ID, 
+    ISNULL(CAPA_MBTD_ID,-1) as CAPA_MBTD_ID, ISNULL(CAPA_NumPart,-1) as CAPA_NumPart, ISNULL(CAPA_AnnoPart,-1) as CAPA_AnnoPart, ISNULL(CAPA_Scadenza,-1) as CAPA_Scadenza, 
+    ISNULL(CAPA_DataVal,0) as CAPA_DataVal, ISNULL(CAPA_DataDoc,0) as CAPA_DataDoc,ISNULL(CAPA_ImportoDare,1.1) as CAPA_ImportoDare, ISNULL(CAPA_ImportoAvere,1.1) as CAPA_ImportoAvere, 
+    ISNULL(CAPA_Residuo,1.1) as CAPA_Residuo, ISNULL(CAPA_Cambio,-1) as CAPA_Cambio, ISNULL(OperationType,'null') as OperationType
+    FROM @DettagliModifiche;
+   
+   	OPEN cursore;
+    FETCH NEXT FROM cursore INTO @CAPA_ID, @CAPA_CASP_Stato, @CAPA_MBPC_ID, @CAPA_MBDI_ID, @CAPA_MBTD_ID,
+        @CAPA_NumPart, @CAPA_AnnoPart, @CAPA_Scadenza, @CAPA_DataVal, @CAPA_DataDoc,
+        @CAPA_ImportoDare, @CAPA_ImportoAvere, @CAPA_Residuo, @CAPA_Cambio, @OperationType;
+   
+   WHILE @@FETCH_STATUS = 0
+   
+   BEGIN
+	    DECLARE @body AS VARCHAR(8000) =
+		'{
+
+			   "QUERY":"'+@OperationType+'",
+			   "TABLE":"CA_Partite",
+			   "DATA":{
+					"CAPA_Id": "' + CAST(@CAPA_ID AS VARCHAR) + '",
+					"CAPA_CASP_Stato": "' + CAST(@CAPA_CASP_Stato AS VARCHAR) + '",
+					"CAPA_MBPC_ID": "' + CAST(@CAPA_MBPC_ID AS VARCHAR) + '",
+					"CAPA_MBDI_ID": "' + CAST(@CAPA_MBDI_ID AS VARCHAR) + '",
+					"CAPA_MBTD_ID": "' + CAST(@CAPA_MBTD_ID AS VARCHAR) + '",
+					"CAPA_NumPart": "' + CAST(@CAPA_NumPart AS VARCHAR) + '",
+					"CAPA_AnnoPart": "' + CAST(@CAPA_AnnoPart AS VARCHAR) + '",
+					"CAPA_Scadenza": "'+CONVERT(VARCHAR, @CAPA_Scadenza,120)+'",
+					"CAPA_DataVal": "'+CONVERT(VARCHAR, @CAPA_DataVal,120)+'",
+					"CAPA_DataDoc": "'+CONVERT(VARCHAR, @CAPA_DataDoc,120)+'",
+					"CAPA_ImportoDare": "' + CAST(@CAPA_ImportoDare AS VARCHAR) + '",
+					"CAPA_ImportoAvere": "' + CAST(@CAPA_ImportoAvere AS VARCHAR) + '",
+					"CAPA_Residuo": "' + CAST(@CAPA_Residuo AS VARCHAR) + '",
+					"CAPA_Cambio": "' + CAST(@CAPA_Cambio AS VARCHAR) + '"
+					}
+		}'
+			
+		PRINT @body;
+		EXEC sp_OACreate 'MSXML2.XMLHTTP', @Object OUT;
+		EXEC sp_OAMethod @Object, 'open', NULL, 'post',
+		                 @URL,
+		                 'false'
+		EXEC sp_OAMethod @Object, 'setRequestHeader', null, 'Content-Type', 'application/json'
+		EXEC sp_OAMethod @Object, 'send', null, @body
+		EXEC sp_OAMethod @Object, 'responseText', @ResponseText OUTPUT
+		PRINT @Responsetext
+		IF CHARINDEX('ko',(SELECT @ResponseText)) > 0
+		BEGIN
+			INSERT INTO dbo.Z_APP_Messaggi
+				(ZAPP_Messaggio)
+				VALUES('{
+
+			   "QUERY":"'+@OperationType+'",
+			   "TABLE":"CA_Partite",
+			   "DATA":{
+					"CAPA_Id": "' + CAST(@CAPA_ID AS VARCHAR) + '",
+					"CAPA_CASP_Stato": "' + CAST(@CAPA_CASP_Stato AS VARCHAR) + '",
+					"CAPA_MBPC_ID": "' + CAST(@CAPA_MBPC_ID AS VARCHAR) + '",
+					"CAPA_MBDI_ID": "' + CAST(@CAPA_MBDI_ID AS VARCHAR) + '",
+					"CAPA_MBTD_ID": "' + CAST(@CAPA_MBTD_ID AS VARCHAR) + '",
+					"CAPA_NumPart": "' + CAST(@CAPA_NumPart AS VARCHAR) + '",
+					"CAPA_AnnoPart": "' + CAST(@CAPA_AnnoPart AS VARCHAR) + '",
+					"CAPA_Scadenza": "'+CONVERT(VARCHAR, @CAPA_Scadenza,120)+'",
+					"CAPA_DataVal": "'+CONVERT(VARCHAR, @CAPA_DataVal,120)+'",
+					"CAPA_DataDoc": "'+CONVERT(VARCHAR, @CAPA_DataDoc,120)+'",
+					"CAPA_ImportoDare": "' + CAST(@CAPA_ImportoDare AS VARCHAR) + '",
+					"CAPA_ImportoAvere": "' + CAST(@CAPA_ImportoAvere AS VARCHAR) + '",
+					"CAPA_Residuo": "' + CAST(@CAPA_Residuo AS VARCHAR) + '",
+					"CAPA_Cambio": "' + CAST(@CAPA_Cambio AS VARCHAR) + '"
+					}
+		}');
+		 SELECT @ResponseText As 'Message'--Creare una tabella messaggi ed aggiungere qui i messaggi da inserire che non sono passati,
+		 --se ritorna ko vuol dire che non è stato salvato il messaggio per nessun dispositivo, quindi quando si collega un client 
+		 --va fatto il controllo sulla tabella messaggi e se sono presenti si esegue la funzione che inserisce un messaggio per ogni device
+		 --e prova ad inviarli.
+		END
+		ELSE
+		BEGIN
+		 --SELECT @ResponseText As 'Employee Details'
+			print @query;
+		END
+		EXEC sp_OADestroy @Object
+	   FETCH NEXT FROM cursore INTO @CAPA_ID, @CAPA_CASP_Stato, @CAPA_MBPC_ID, @CAPA_MBDI_ID, @CAPA_MBTD_ID,
+        @CAPA_NumPart, @CAPA_AnnoPart, @CAPA_Scadenza, @CAPA_DataVal, @CAPA_DataDoc,
+        @CAPA_ImportoDare, @CAPA_ImportoAvere, @CAPA_Residuo, @CAPA_Cambio, @OperationType;
+   END
+   CLOSE cursore;
+   DEALLOCATE cursore;
+END;
+```
+  * trigger
+```
+```
+  * trigger
+```
+```
 * Aggiungere le seguenti funzioni
 ```
 /****** Object:  UserDefinedFunction [dbo].[Z_APP_Disponibilita]    Script Date: 11/13/2024 17:04:08 ******/
