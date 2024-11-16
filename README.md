@@ -3093,8 +3093,139 @@ PRINT 'ESEGUO TRIGGER';
    DEALLOCATE cursore;
 END;
 ```
-  * trigger
+  * Anagrafiche Articoli
 ```
+CREATE TRIGGER [dbo].[Z_APP_AnaArt] ON [dbo].[MG_AnaArt]
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    INSERT INTO Z_APP_LOG (ZALO_Messaggio, ZALO_Provenienza) VALUES ('ESEGUO TRIGGER Aggiornamento Anagrafiche Articoli','TRIGGER: MG_AnaArt');
+    SET NOCOUNT ON;
+
+    DECLARE @URL NVARCHAR(MAX);
+    SELECT @URL = ZIAP_IndirizzoServer FROM Z_APP_info;
+    DECLARE @Object AS INT;
+    DECLARE @ResponseText AS VARCHAR(8000);
+	DECLARE @query AS VARCHAR(5000);
+    DECLARE @OperationType AS VARCHAR(10);
+    DECLARE @MGAA_ID AS INT;
+    DECLARE @MGAA_Descr AS VARCHAR(100);
+    DECLARE @MGAA_Matricola AS VARCHAR(50);
+    DECLARE @MGAA_MBIV_ID AS INT
+    DECLARE @MGAA_MBDC_Classe AS VARCHAR(50);
+    DECLARE @MGAA_MBUM_Codice AS VARCHAR(10);
+    DECLARE @MGAA_Stato AS INT;
+    DECLARE @MGAA_PVendita AS DECIMAL(18,2);
+
+
+    DECLARE @DettagliModifiche TABLE (
+        MGAA_ID INT,
+        MGAA_Descr VARCHAR(100),
+        MGAA_Matricola VARCHAR(50),
+        MGAA_MBIV_ID INT,
+        MGAA_MBDC_Classe VARCHAR(50),
+        MGAA_MBUM_Codice varchar(10),
+        MGAA_Stato INT,
+        MGAA_PVendita DECIMAL(18,2),
+        OperationType VARCHAR(10)
+    );
+
+    IF EXISTS (SELECT * FROM inserted) AND NOT EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            MGAA_ID, MGAA_Descr, MGAA_Matricola, MGAA_MBIV_ID, MGAA_MBDC_Classe,MGAA_MBUM_Codice, MGAA_Stato,
+            MGAA_PVendita, 'INSERT'
+        FROM inserted;
+    END
+
+    IF EXISTS (SELECT * FROM inserted) AND EXISTS (SELECT * FROM deleted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            i.MGAA_ID, i.MGAA_Descr, i.MGAA_Matricola, i.MGAA_MBIV_ID, i.MGAA_MBDC_Classe,i.MGAA_MBUM_Codice, i.MGAA_Stato,
+            i.MGAA_PVendita, 'UPDATE'
+        FROM inserted i
+        JOIN deleted d ON i.MGAA_ID = d.MGAA_ID;
+    END
+
+    IF EXISTS (SELECT * FROM deleted) AND NOT EXISTS (SELECT * FROM inserted)
+    BEGIN
+        INSERT INTO @DettagliModifiche
+        SELECT 
+            MGAA_ID, MGAA_Descr, MGAA_Matricola, MGAA_MBIV_ID, MGAA_MBDC_Classe,MGAA_MBUM_Codice, MGAA_Stato,
+            MGAA_PVendita, 'DELETE'
+        FROM deleted;
+    END
+
+    DECLARE cursore CURSOR FOR 
+    SELECT * FROM @DettagliModifiche;
+
+    OPEN cursore;
+    FETCH NEXT FROM cursore INTO 
+        @MGAA_ID, @MGAA_Descr, @MGAA_Matricola, @MGAA_MBIV_ID, @MGAA_MBDC_Classe, @MGAA_MBUM_Codice, @MGAA_Stato,
+            @MGAA_PVendita, @OperationType;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+	        DECLARE @body AS VARCHAR(8000) = '{
+	           "QUERY":"' + @OperationType + '",
+	           "TABLE":"MG_AnaArt",
+	           "DATA":{
+	                "MGAA_ID": "' + CAST(ISNULL(@MGAA_ID, 0) AS VARCHAR) + '",
+	                "MGAA_Descr": "' + ISNULL(@MGAA_Descr, '') + '",
+	                "MGAA_Matricola": "' + ISNULL(@MGAA_Matricola, '')+ '",
+	                "MGAA_MBIV_ID": "' + CAST(ISNULL(@MGAA_MBIV_ID, 0) AS VARCHAR) + '",
+	                "MGAA_MBDC_Classe": "' + ISNULL(@MGAA_MBDC_Classe, '') + '",
+	                "MGAA_MBUM_Codice": "' + ISNULL(@MGAA_MBUM_Codice, '') + '",
+	                "MGAA_Stato": "' + CAST(ISNULL(@MGAA_Stato, 0) AS VARCHAR) + '",
+	                "MGAA_PVendita": "' + ISNULL(CAST(@MGAA_PVendita AS VARCHAR),0) + '"
+	            }
+	        }' -- JSON body for HTTP POST similar to the first trigger
+			print(@body);
+	        EXEC sp_OACreate 'MSXML2.XMLHTTP', @Object OUT;
+	        EXEC sp_OAMethod @Object, 'open', NULL, 'post', @URL, 'false';
+	        EXEC sp_OAMethod @Object, 'setRequestHeader', NULL, 'Content-Type', 'application/json';
+	        EXEC sp_OAMethod @Object, 'send', NULL, @body;
+	        EXEC sp_OAMethod @Object, 'responseText', @ResponseText OUTPUT;
+	
+	
+	       IF CHARINDEX('ko',(SELECT @ResponseText)) > 0
+			BEGIN
+				INSERT INTO dbo.Z_APP_Messaggi
+					(ZAPP_Messaggio)https://github.com/MonacoSimone/yesplus/blob/main/README.md
+					VALUES('{
+	           "QUERY":"' + @OperationType + '",
+	           "TABLE":"MG_AnaArt",
+	           "DATA":{
+	                "MGAA_ID": "' + CAST(ISNULL(@MGAA_ID, 0) AS VARCHAR) + '",
+	                "MGAA_Descr": "' + ISNULL(@MGAA_Descr, '') + '",
+	                "MGAA_Matricola": "' + ISNULL(@MGAA_Matricola, '')+ '",
+	                "MGAA_MBIV_ID": "' + CAST(ISNULL(@MGAA_MBIV_ID, 0) AS VARCHAR) + '",
+	                "MGAA_MBDC_Classe": "' + ISNULL(@MGAA_MBDC_Classe, '') + '",
+	                "MGAA_MBUM_Codice": "' + ISNULL(@MGAA_MBUM_Codice, '') + '",
+	                "MGAA_Stato": "' + CAST(ISNULL(@MGAA_Stato, 0) AS VARCHAR) + '",
+	                "MGAA_PVendita": "' + ISNULL(CAST(@MGAA_PVendita AS VARCHAR),0) + '"
+	            }
+	        }');		
+			END
+			EXEC sp_OADestroy @Object
+		
+		
+	       
+	    FETCH NEXT FROM cursore INTO 
+	        @MGAA_ID, @MGAA_Descr, @MGAA_Matricola, @MGAA_MBIV_ID, @MGAA_MBDC_Classe, @MGAA_MBUM_Codice, @MGAA_Stato,
+            @MGAA_PVendita, @OperationType;
+    END
+
+    CLOSE cursore;
+    DEALLOCATE cursore;
+
+    IF @Object IS NOT NULL
+	BEGIN
+	    EXEC sp_OADestroy @Object;
+	END
+END;
 ```
   * trigger
 ```
