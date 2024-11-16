@@ -762,6 +762,41 @@ class DatabaseHelper {
                         AND ZPTV_MGAA_Id NOT IN (SELECT ZPTV_MGAA_Id FROM Z_PrezziTV WHERE ZPTV_MBPC_Id = $mbpcid) AND MGAA_Stato=1;""");
 
     //db.close();
+    debugPrint("""SELECT 
+                          ZPTV_MGAA_Id AS MGAA_ID,
+                          ZPTV_Prezzo AS MGAA_PVendita,
+                          MGAA_MBDC_Classe,
+                          MGAA_Matricola,
+                          MGAA_Descr,
+                          MGAA_MBUM_Codice,
+                          MGAA_MBIV_ID,
+                          MGAA_Stato,
+                          CASE WHEN ZPTV_Sconto1 is NULL THEN MBAN_Sconto1 ELSE ZPTV_Sconto1 END Sconto1,
+                          CASE WHEN ZPTV_Sconto2 is NULL THEN MBAN_Sconto2 ELSE ZPTV_Sconto1 END Sconto2,
+                          CASE WHEN ZPTV_Sconto3 is NULL THEN MBAN_Sconto3 ELSE ZPTV_Sconto1 END Sconto3
+                        FROM Z_PrezziTV
+                        LEFT JOIN MG_AnaArt ON MGAA_ID= ZPTV_MGAA_ID
+                        JOIN MB_Anagr ON MBPC_ID= ZPTV_MBPC_ID
+                        WHERE ZPTV_MBPC_Id = $mbpcid
+
+                        UNION
+
+                        SELECT 
+                          ZPTV_MGAA_Id AS MGAA_ID,
+                          ZPTV_Prezzo AS MGAA_PVendita,
+                          MGAA_MBDC_Classe,
+                          MGAA_Matricola,
+                          MGAA_Descr,
+                          MGAA_MBUM_Codice,
+                          MGAA_MBIV_ID,
+                          MGAA_Stato,
+                          NULL AS ZPTV_Sconto1,
+                          NULL AS ZPTV_Sconto2,
+                          NULL AS ZPTV_Sconto3
+                        FROM Z_PrezziTV
+                        LEFT JOIN MG_AnaArt ON MGAA_ID= ZPTV_MGAA_ID
+                        WHERE ZPTV_MBPC_Id IS NULL
+                        AND ZPTV_MGAA_Id NOT IN (SELECT ZPTV_MGAA_Id FROM Z_PrezziTV WHERE ZPTV_MBPC_Id = $mbpcid) AND MGAA_Stato=1;""");
     return List.generate(map.length, (i) {
       //debugPrint(map[i].toString());
       return Prodotto.fromJson(map[i]);

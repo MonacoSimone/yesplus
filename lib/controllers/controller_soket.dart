@@ -410,7 +410,10 @@ class WebSocketController extends GetxController {
             whereClause = 'MBTC_Id=?';
             values.add(data['MBTC_Id']);
             break;
-
+          case 'MG_AnaArt':
+            whereClause = 'MGAA_ID=?';
+            values.add(data['MGAA_ID']);
+            break;
           default:
             break;
         }
@@ -421,6 +424,8 @@ class WebSocketController extends GetxController {
       //await db.rawUpdate(query, values);
 
       case 'INSERT':
+        data = data.map((key, value) => MapEntry(
+            key, (key == "ZPTV_MBPC_ID" && value == "0") ? null : value));
         String columns = data.keys.join(", ");
         String valueHolders = data.keys.map((_) => "?").join(", ");
         List<dynamic> values = data.values.toList();
@@ -496,6 +501,10 @@ class WebSocketController extends GetxController {
             whereClause = 'MBTC_Id=?';
             values.add(data['MBTC_Id']);
             break;
+          case 'MG_AnaArt':
+            whereClause = 'MGAA_ID=?';
+            values.add(data['MGAA_ID']);
+            break;
           case 'OC_Artic':
             if (data['OCAR_APP_ID'] == null || data['OCAR_APP_ID'].isEmpty) {
               whereClause =
@@ -537,6 +546,10 @@ class WebSocketController extends GetxController {
                 .rawDelete('DELETE FROM BL_Pagam WHERE BLPG_BLAN_ID=?', values);
             await DatabaseHelper()
                 .rawDelete('DELETE FROM BL_Artic WHERE BLAR_BLAN_ID=?', values);
+            break;
+          case 'Z_PrezziTv':
+            whereClause = 'ZPTV_ID=?';
+            values.add(data['ZPTV_ID']);
             break;
           default:
             break;

@@ -242,8 +242,9 @@ class Connessioni extends StatelessWidget {
                   InkWell(
                     onTap: () async {
                       //Get.to(() => MessagesPage());
-                      await coc.initOC_Anagr(33, 6);
-                      await coc.initOC_Arti(33, 6);
+                      //await coc.initOC_Anagr(33, 6);
+                      //await coc.initOC_Arti(33, 6);
+                      await coc.initZprezziTv();
                       //await coc.getMBDiv();
                       //await coc.getMBSoc();
                     },
