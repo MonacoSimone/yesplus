@@ -1,6 +1,12 @@
 # YES+
-
 Applicazione Mobile per integrazione gestionale YES
+
+# Indice
+
+* [Installazione APP](#Installazione-APP)
+* [Installazione Server](#Installazione-Server)
+* [Preparazione DB](#Preparazione-DB)
+
 
 ## Installazione APP
 
@@ -8,74 +14,23 @@ passaggi per l'installazione dell'app
 
 ## Installazione Server
 
-## Aggiornamenti DB
+## Preparazione DB 
 
-* Creare le tabelle necessarie
-```
-/****** Object:  Table [dbo].[Z_APP_AG_DI]    Script Date: 11/13/2024 16:40:49 ******/
-SET ANSI_NULLS ON
-GO
+* [Creazione Tabelle](#Creare-le-tabelle-necessarie)
+	- [Z_APP_dispositivi](#Z_APP_dispositivi)
+ 	- [Z_APP_Messaggi](#Z_APP_Messaggi)
+  	- [Z_APP_aggiorna_dispositivi](#Z_APP_aggiorna_dispositivi)
+  	- [Z_APP_AG_DI](#Z_APP_AG_DI)
+  	- [Z_APP_LOG](#Z_APP_LOG)
+  	- [Z_APP_Info](#Z_APP_Info)
+  	- [Z_PrezziTV](#Z_PrezziTV)
+  	- [ENABLE/DISABLE Trigger](#ed_Trigger)
+* [Modifiche Tabelle Esistenti](#Modifiche-Tabelle-Esistenti)
 
-SET QUOTED_IDENTIFIER ON
-GO
-
-CREATE TABLE [dbo].[Z_APP_AG_DI](
-	[ZAPPRAD_ID] [int] IDENTITY(0,1) NOT NULL,
-	[ZAPPRAD_AGDI_ID] [int] NULL,
-	[ZAPPRAD_DISP_ID] [int] NULL,
-	[ZAPPRAD_DataIns] [datetime] NULL,
-	[ZAPPRAD_DataEsec] [datetime] NULL,
-	[ZAPPRAD_Stato] [int] NULL,
-	[ZAPPRAD_DebugFlag] [bit] NULL,
-	[ZAPPRAD_Locked] [bit] NULL,
- CONSTRAINT [Z_APP_AG_DI_PK] PRIMARY KEY CLUSTERED 
-(
-	[ZAPPRAD_ID] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
-) ON [PRIMARY]
-
-GO
-
-ALTER TABLE [dbo].[Z_APP_AG_DI] ADD  DEFAULT (getdate()) FOR [ZAPPRAD_DataIns]
-GO
-
-ALTER TABLE [dbo].[Z_APP_AG_DI] ADD  DEFAULT ((0)) FOR [ZAPPRAD_Stato]
-GO
-
-ALTER TABLE [dbo].[Z_APP_AG_DI] ADD  DEFAULT ((0)) FOR [ZAPPRAD_DebugFlag]
-GO
-```
-
-```
-/****** Object:  Table [dbo].[Z_APP_aggiorna_dispositivi]    Script Date: 11/13/2024 16:41:56 ******/
-SET ANSI_NULLS ON
-GO
-
-SET QUOTED_IDENTIFIER ON
-GO
-
-SET ANSI_PADDING ON
-GO
-
-CREATE TABLE [dbo].[Z_APP_aggiorna_dispositivi](
-	[ZAPPAD_ID] [int] IDENTITY(0,1) NOT NULL,
-	[ZAPPAD_messaggio] [varchar](max) NOT NULL,
-	[ZAPPAD_creato] [datetime] NULL,
- CONSTRAINT [Z_APP_aggiorna_dispositivi_PK] PRIMARY KEY CLUSTERED 
-(
-	[ZAPPAD_ID] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
-) ON [PRIMARY]
-
-GO
-
-SET ANSI_PADDING OFF
-GO
-
-ALTER TABLE [dbo].[Z_APP_aggiorna_dispositivi] ADD  CONSTRAINT [DF__Z_APP_agg__ZAPPA__54575AEB]  DEFAULT (getdate()) FOR [ZAPPAD_creato]
-GO
-```
-
+* ### Creare le tabelle necessarie
+	<a name="Z_APP_dispositivi"></a>
+	- La tabella **Z_APP_dispositivi** salva l'associazione id tablet con parametri salvati sul dispositivo, quali Agente, Tipo Ordine, Tipo Fattura, Tipo Bolla, Tipo Conto...
+   	Inoltre alla connessione e alla disconnessione del dispositivo aggiorna lo stato in connesso/disconnesso.  	
 ```
 /****** Object:  Table [dbo].[Z_APP_dispositivi]    Script Date: 11/13/2024 16:42:30 ******/
 SET ANSI_NULLS ON
@@ -114,37 +69,8 @@ GO
 ALTER TABLE [dbo].[Z_APP_dispositivi] ADD  DEFAULT ((0)) FOR [ZAPPD_Init_Status]
 GO
 ```
-
-```
-/****** Object:  Table [dbo].[Z_APP_LOG]    Script Date: 11/13/2024 16:43:28 ******/
-SET ANSI_NULLS ON
-GO
-
-SET QUOTED_IDENTIFIER ON
-GO
-
-SET ANSI_PADDING ON
-GO
-
-CREATE TABLE [dbo].[Z_APP_LOG](
-	[ZALO_ID] [int] IDENTITY(1,1) NOT NULL,
-	[ZALO_Messaggio] [varchar](max) NULL,
-	[ZALO_provenienza] [varchar](50) NULL,
-	[ZALO_DataIns] [datetime] NULL,
- CONSTRAINT [PK_Z_APP_LOG] PRIMARY KEY CLUSTERED 
-(
-	[ZALO_ID] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
-) ON [PRIMARY]
-
-GO
-
-SET ANSI_PADDING OFF
-GO
-
-ALTER TABLE [dbo].[Z_APP_LOG] ADD  CONSTRAINT [DF_Z_APP_LOG_ZALO_DataIns]  DEFAULT (getdate()) FOR [ZALO_DataIns]
-GO
-```
+<a name="Z_APP_Messaggi"></a>
+- Nella tabella **Z_APP_Messaggi** vengono salvati quei messaggi che i trigger o le procedure non riescono, per qualche motivo, ad inviare al server, quindi quando la chiamata `http://indirizzo/trigger` risponde `ko`
 
 ```
 /****** Object:  Table [dbo].[Z_APP_Messaggi]    Script Date: 11/13/2024 16:43:50 ******/
@@ -180,6 +106,112 @@ ALTER TABLE [dbo].[Z_APP_Messaggi] ADD  DEFAULT (NULL) FOR [ZAPP_DataEsec]
 GO
 ```
 
+<a name="Z_APP_aggiorna_dispositivi"></a>
+- Nella tabella **Z_APP_aggiorna_dispositivi** vengono inseriti i messaggi inviati dai trigger e dalle procedure, prima di essere smistati ai dispositivi.
+
+```
+/****** Object:  Table [dbo].[Z_APP_aggiorna_dispositivi]    Script Date: 11/13/2024 16:41:56 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+SET ANSI_PADDING ON
+GO
+
+CREATE TABLE [dbo].[Z_APP_aggiorna_dispositivi](
+	[ZAPPAD_ID] [int] IDENTITY(0,1) NOT NULL,
+	[ZAPPAD_messaggio] [varchar](max) NOT NULL,
+	[ZAPPAD_creato] [datetime] NULL,
+ CONSTRAINT [Z_APP_aggiorna_dispositivi_PK] PRIMARY KEY CLUSTERED 
+(
+	[ZAPPAD_ID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+SET ANSI_PADDING OFF
+GO
+
+ALTER TABLE [dbo].[Z_APP_aggiorna_dispositivi] ADD  CONSTRAINT [DF__Z_APP_agg__ZAPPA__54575AEB]  DEFAULT (getdate()) FOR [ZAPPAD_creato]
+GO
+```
+
+<a name="Z_APP_AG_DI"></a>
+- Nella tabella **Z_APP_AG_DI** vengono inserite le relazioni tra la tabella `Z_APP_aggiorna_dispositivi` e la tabella `Z_APP_dispositivi`, quindi il messaggio salvato sulla tabella `Z_APP_Messaggi` viene ripetuto e associato ad ogni dispositivo necessario. Se la tabella da aggiornare è una di quelle per cui ci sono i parametri nella tabella `Z_APP_aggiorna_dispositivi` allora verra inserita una riga solo per i dispositivi per cui l'aggiornamento è effettivamente diretto, altrimenti viene inserita una riga per ogni dispositivo.
+
+```
+/****** Object:  Table [dbo].[Z_APP_AG_DI]    Script Date: 11/13/2024 16:40:49 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[Z_APP_AG_DI](
+	[ZAPPRAD_ID] [int] IDENTITY(0,1) NOT NULL,
+	[ZAPPRAD_AGDI_ID] [int] NULL,
+	[ZAPPRAD_DISP_ID] [int] NULL,
+	[ZAPPRAD_DataIns] [datetime] NULL,
+	[ZAPPRAD_DataEsec] [datetime] NULL,
+	[ZAPPRAD_Stato] [int] NULL,
+	[ZAPPRAD_DebugFlag] [bit] NULL,
+	[ZAPPRAD_Locked] [bit] NULL,
+ CONSTRAINT [Z_APP_AG_DI_PK] PRIMARY KEY CLUSTERED 
+(
+	[ZAPPRAD_ID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+ALTER TABLE [dbo].[Z_APP_AG_DI] ADD  DEFAULT (getdate()) FOR [ZAPPRAD_DataIns]
+GO
+
+ALTER TABLE [dbo].[Z_APP_AG_DI] ADD  DEFAULT ((0)) FOR [ZAPPRAD_Stato]
+GO
+
+ALTER TABLE [dbo].[Z_APP_AG_DI] ADD  DEFAULT ((0)) FOR [ZAPPRAD_DebugFlag]
+GO
+```
+
+<a name="Z_APP_LOG"></a>
+- Nella tabella **Z_APP_LOG** vengono salvati i log delle esecuzioni di trigger e procedure
+
+```
+/****** Object:  Table [dbo].[Z_APP_LOG]    Script Date: 11/13/2024 16:43:28 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+SET ANSI_PADDING ON
+GO
+
+CREATE TABLE [dbo].[Z_APP_LOG](
+	[ZALO_ID] [int] IDENTITY(1,1) NOT NULL,
+	[ZALO_Messaggio] [varchar](max) NULL,
+	[ZALO_provenienza] [varchar](50) NULL,
+	[ZALO_DataIns] [datetime] NULL,
+ CONSTRAINT [PK_Z_APP_LOG] PRIMARY KEY CLUSTERED 
+(
+	[ZALO_ID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+SET ANSI_PADDING OFF
+GO
+
+ALTER TABLE [dbo].[Z_APP_LOG] ADD  CONSTRAINT [DF_Z_APP_LOG_ZALO_DataIns]  DEFAULT (getdate()) FOR [ZALO_DataIns]
+GO
+```
+<a name="Z_APP_Info"></a>
+- Nella tabella **Z_APP_Info** sono salvate info varie dell'app, al momento l'unica info necessaria è l'indirizzo del server API a cui inviare la richiesta `/trigger` dalle procedure e dai trigger
 
 ```
 /****** Object:  Table [dbo].[Z_APP_Info]    Script Date: 11/13/2024 16:44:11 ******/
@@ -206,6 +238,9 @@ GO
 SET ANSI_PADDING OFF
 GO
 ```
+<a name="Z_PrezziTV"></a>
+- Nella tabella **Z_PrezziTV** vengono salvate da una stored programmata tutte le combinazioni di Prodotti - Prezzi e Sconti generici e per cliente.
+
 ```
 CREATE TABLE dbo.Z_PrezziTV
 	(
@@ -226,9 +261,31 @@ ALTER TABLE dbo.Z_PrezziTV ADD CONSTRAINT
 
 GO
 ```
+* ### Modifiche Tabelle Esistenti
+	- Modificare le tabelle aggiungendo il campo XXXX_APP_ID
+```
+      ALTER TABLE FT_Anag
+  ADD FTAN_APP_ID VARCHAR(50);
+  
+    ALTER TABLE BL_Anag
+  ADD BLAN_APP_ID VARCHAR(50);
+  
+    ALTER TABLE FT_Artic
+  ADD FTAR_APP_ID VARCHAR(50);
+  
+    ALTER TABLE BL_Artic
+  ADD BLAR_APP_ID VARCHAR(50);
+  
+    ALTER TABLE OC_Anag
+  ADD OCAN_APP_ID VARCHAR(50);
+  
+    ALTER TABLE OC_Artic
+  ADD OCAR_APP_ID VARCHAR(50);
+```
+
 * Inserire nella tabella Z_APP_info l'indirizzo del server API con la chiamata **/trigger**
 ```
-INSERT INTO [TestTrigger].[dbo].[Z_APP_Info]
+INSERT INTO [dbo].[Z_APP_Info]
            ([ZIAP_ID]
            ,[ZIAP_IndirizzoServer])
      VALUES
@@ -236,31 +293,7 @@ INSERT INTO [TestTrigger].[dbo].[Z_APP_Info]
            ,'HTTP://127.0.0.1:5000/trigger')
 GO
 ```
-* Aggiornare le tabelle FT_Anag, OC_Anag, BL_Anag, FT_Artic, OC_Artic, BL_Artic come segue
-```
-  ALTER TABLE FT_Anag
-  ALTER COLUMN FTAN_APP_ID VARCHAR(50);
-```
-```
-  ALTER TABLE OC_Anag
-  ALTER COLUMN OCAN_APP_ID VARCHAR(50);
-```
-```
-  ALTER TABLE BL_Anag
-  ALTER COLUMN BLAN_APP_ID VARCHAR(50);
-```
-```
-  ALTER TABLE FT_Artic
-  ALTER COLUMN FTAR_APP_ID VARCHAR(50);
-```
-```
-  ALTER TABLE OC_Artic
-  ALTER COLUMN OCAR_APP_ID VARCHAR(50);
-```
-```
-  ALTER TABLE BL_Artic
-  ALTER COLUMN BLAR_APP_ID VARCHAR(50);
-```
+
 * Creare le procedure per l'aggiornamento di Ordini/Bolle/Fatture Inserite da YES e l'aggiornamento serale dei prezzi
   * **Aggiornamento Prezzi**
 ```
@@ -1209,9 +1242,6 @@ GO
 
   * Fatture
 ```
-USE [TestTrigger]
-GO
-
 /****** Object:  Trigger [dbo].[Z_APP_TR_FT_Anag]    Script Date: 11/13/2024 16:56:02 ******/
 SET ANSI_NULLS ON
 GO
@@ -3193,7 +3223,7 @@ BEGIN
 	       IF CHARINDEX('ko',(SELECT @ResponseText)) > 0
 			BEGIN
 				INSERT INTO dbo.Z_APP_Messaggi
-					(ZAPP_Messaggio)https://github.com/MonacoSimone/yesplus/blob/main/README.md
+					(ZAPP_Messaggio)
 					VALUES('{
 	           "QUERY":"' + @OperationType + '",
 	           "TABLE":"MG_AnaArt",
@@ -3226,6 +3256,53 @@ BEGIN
 	    EXEC sp_OADestroy @Object;
 	END
 END;
+```
+<a name="ed_Trigger"></a>
+  * ENABLE/DISABLE Trigger
+```
+ENABLE TRIGGER [dbo].[Z_APP_TR_OC_Anag] ON [dbo].[OC_Anag];
+ENABLE TRIGGER [dbo].[Z_APP_TR_BL_Anag] ON [dbo].[BL_Anag];
+ENABLE TRIGGER [dbo].[Z_APP_TR_FT_Anag] ON [dbo].[FT_Anag];
+ENABLE TRIGGER [dbo].[Z_APP_Z_PrezziTv] ON [dbo].[Z_PrezziTv];
+ENABLE TRIGGER [dbo].[Z_APP_BL_Pagam] ON [dbo].[BL_Pagam];
+ENABLE TRIGGER [dbo].[Z_APP_BL_Tipo] ON [dbo].[BL_Tipo];
+ENABLE TRIGGER [dbo].[Z_APP_FT_Pagam] ON [dbo].[FT_Pagam];
+ENABLE TRIGGER [dbo].[Z_APP_FT_Tipo] ON [dbo].[FT_Tipo];
+ENABLE TRIGGER [dbo].[Z_APP_MB_Agenti] ON [dbo].[MB_Agenti];
+ENABLE TRIGGER [dbo].[Z_APP_MB_Iva] ON [dbo].[MB_Iva];
+ENABLE TRIGGER [dbo].[Z_APP_MB_SolPag] ON [dbo].[MB_SolPag];
+ENABLE TRIGGER [dbo].[Z_APP_MB_TipiArticoloVA] ON [dbo].[MB_TipiArticoloVA];
+ENABLE TRIGGER [dbo].[Z_APP_MB_TipoConto] ON [dbo].[MB_TipoConto];
+ENABLE TRIGGER [dbo].[Z_APP_MB_TipoPag] ON [dbo].[MB_TipoPag];
+ENABLE TRIGGER [dbo].[Z_APP_OC_Pagam] ON [dbo].[OC_Pagam];
+ENABLE TRIGGER [dbo].[Z_APP_OC_Tipo] ON [dbo].[OC_Tipo];
+ENABLE TRIGGER [dbo].[Z_APP_Partite] ON [dbo].[CA_Partite];
+ENABLE TRIGGER [dbo].[Z_APP_AnaArt] ON [dbo].[MG_AnaArt];
+
+DISABLE TRIGGER [dbo].[Z_APP_TR_OC_Anag] ON [dbo].[OC_Anag];
+DISABLE TRIGGER [dbo].[Z_APP_TR_BL_Anag] ON [dbo].[BL_Anag];
+DISABLE TRIGGER [dbo].[Z_APP_TR_FT_Anag] ON [dbo].[FT_Anag];
+DISABLE TRIGGER [dbo].[Z_APP_Z_PrezziTv] ON [dbo].[Z_PrezziTv];
+DISABLE TRIGGER [dbo].[Z_APP_BL_Pagam] ON [dbo].[BL_Pagam];
+DISABLE TRIGGER [dbo].[Z_APP_BL_Tipo] ON [dbo].[BL_Tipo];
+DISABLE TRIGGER [dbo].[Z_APP_FT_Pagam] ON [dbo].[FT_Pagam];
+DISABLE TRIGGER [dbo].[Z_APP_FT_Tipo] ON [dbo].[FT_Tipo];
+DISABLE TRIGGER [dbo].[Z_APP_MB_Agenti] ON [dbo].[MB_Agenti];
+DISABLE TRIGGER [dbo].[Z_APP_MB_Iva] ON [dbo].[MB_Iva];
+DISABLE TRIGGER [dbo].[Z_APP_MB_SolPag] ON [dbo].[MB_SolPag];
+DISABLE TRIGGER [dbo].[Z_APP_MB_TipiArticoloVA] ON [dbo].[MB_TipiArticoloVA];
+DISABLE TRIGGER [dbo].[Z_APP_MB_TipoConto] ON [dbo].[MB_TipoConto];
+DISABLE TRIGGER [dbo].[Z_APP_MB_TipoPag] ON [dbo].[MB_TipoPag];
+DISABLE TRIGGER [dbo].[Z_APP_OC_Pagam] ON [dbo].[OC_Pagam];
+DISABLE TRIGGER [dbo].[Z_APP_OC_Tipo] ON [dbo].[OC_Tipo];
+DISABLE TRIGGER [dbo].[Z_APP_Partite] ON [dbo].[CA_Partite];
+DISABLE TRIGGER [dbo].[Z_APP_AnaArt] ON [dbo].[MG_AnaArt];
+```
+  * trigger
+```
+```
+  * trigger
+```
 ```
   * trigger
 ```

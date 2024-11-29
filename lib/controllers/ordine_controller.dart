@@ -286,16 +286,9 @@ class OrdineController extends GetxController {
     try {
       final response =
           await dioClient.get('$ipAddressApi/disponibilita/$mgaaid');
-      debugPrint(response.toString());
+      debugPrint('response: ${response.toString()}');
 
-      // Controllo se la risposta è valida
-      if (response.statusCode == 200) {
-        disponibilita.value = jsonDecode(response.data)['disp'].toString();
-      } else {
-        debugPrint(
-            'Errore nella richiesta, statusCode: ${response.statusCode}');
-        disponibilita.value = 'N/D'; // Valore di fallback in caso di errore
-      }
+      disponibilita.value = jsonDecode(response.toString())['disp'].toString();
     } catch (e) {
       // Gestione degli errori di Dio (come timeout, connessione persa, ecc.)
       debugPrint('Errore durante la chiamata API: $e');

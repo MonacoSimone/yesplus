@@ -1506,7 +1506,7 @@ class DatabaseHelper {
     final octi_id = map0[0]["SPPA_OCTI_ID"];
     final List<Map<String, dynamic>> map = await db.rawQuery(
         "SELECT MAX(OCAN_NumOrd) as OCAN_NumOrd FROM OC_Anag WHERE OCAN_OCTI_ID=$octi_id AND OCAN_AnnoOrd=${DateTime.now().year}");
-    debugPrint(map[0]["OCAN_NumOrd"]);
+    //debugPrint(map[0]["OCAN_NumOrd"].toString());
     return map[0]["OCAN_NumOrd"] ?? 0;
   }
 
@@ -1522,7 +1522,7 @@ class DatabaseHelper {
     Database db = await _currentDatabase();
     final List<Map<String, dynamic>> map =
         await db.rawQuery("SELECT APPT_ID FROM OC_APP_ID");
-    debugPrint(map[0]["APPT_ID"] + 1);
+    //debugPrint(map[0]["APPT_ID"] + 1);
     return map[0]["APPT_ID"] + 1;
   }
 
@@ -1530,7 +1530,7 @@ class DatabaseHelper {
     Database db = await _currentDatabase();
     final List<Map<String, dynamic>> map =
         await db.rawQuery("SELECT APPR_ID FROM OC_APP_ID");
-    debugPrint(map[0]["APPR_ID"] + 1);
+    //debugPrint(map[0]["APPR_ID"] + 1);
     return map[0]["APPR_ID"] + 1;
   }
   /*BOLLE */

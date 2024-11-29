@@ -58,7 +58,7 @@ android {
         create("release") {
             keyAlias = "key0"
             keyPassword = "20YesPlus24!"
-            storeFile = file("/Users/simonemonaco/Sviluppo/flutter/yesplus/yesplus.jks") // Update path if needed
+            storeFile = file("/Users/simonemonaco/Sviluppo/flutter/yesplus/yesplus") // Update path if needed
             storePassword = "20YesPlus24!"
         }
     }
