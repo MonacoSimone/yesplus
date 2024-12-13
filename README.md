@@ -15,7 +15,7 @@ passaggi per l'installazione dell'app
 ## Installazione Server
 
 ## Preparazione DB 
-
+* [Abilitazione SP_OACreate](#SP_OACreate)
 * [Creazione Tabelle](#Creare-le-tabelle-necessarie)
 	- [Z_APP_dispositivi](#Z_APP_dispositivi)
  	- [Z_APP_Messaggi](#Z_APP_Messaggi)
@@ -26,6 +26,20 @@ passaggi per l'installazione dell'app
   	- [Z_PrezziTV](#Z_PrezziTV)
   	- [ENABLE/DISABLE Trigger](#ed_Trigger)
 * [Modifiche Tabelle Esistenti](#Modifiche-Tabelle-Esistenti)
+
+* ### Abilitazione SP_OACreate
+<a name="SP_OACreate"></a>
+   	- Abilitare nel databse le funziona avanzate per effettuare la chiamata alle api.
+```
+sp_configure 'show advanced options', 1;
+GO
+RECONFIGURE;
+GO
+sp_configure 'Ole Automation Procedures', 1;
+GO
+RECONFIGURE;
+GO
+```
 
 * ### Creare le tabelle necessarie
 	<a name="Z_APP_dispositivi"></a>

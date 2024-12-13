@@ -1958,13 +1958,13 @@ class ConnessioneController extends GetxController {
       await initBLPagam(idBLTipo2, tipoConto);
 
       stato.add('Recupero Testate Fatture: '.obs);
-      await initFT_Anagr(idFTTipo, tipoConto);
+      await initFT_Anagr(idAge, tipoConto);
 
       stato.add('Recupero Righe Fatture: '.obs);
-      await initFT_Artic(idFTTipo, tipoConto);
+      await initFT_Artic(idAge, tipoConto);
 
       stato.add('Recupero Pagamenti Fatture: '.obs);
-      await initFTPagam(idFTTipo, tipoConto);
+      await initFTPagam(idAge, tipoConto);
 
       stato.add('Recupero Testate Ordini: '.obs);
       await initOC_Anagr(idOCTipo, tipoConto);

@@ -27,6 +27,9 @@ android {
             applicationId = "com.monacosimone.yesplus"
             versionName = "1.0.0"
             resValue("string", "app_name", "YesPlus")
+            /* ndk {
+                abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
+            } */
         }
         create("gelomare") {
             dimension = "client"
@@ -35,6 +38,9 @@ android {
             applicationId = "com.monacosimone.yesplus"
             versionName = "1.0.0"
             resValue("string", "app_name", "Yes+ Gelomare")
+            /* ndk {
+                abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
+            } */
         }
         create("mcfood") {
             dimension = "client"
@@ -43,6 +49,9 @@ android {
             applicationId = "com.monacosimone.yesplus"
             versionName = "1.0.0"
             resValue("string", "app_name", "Yes+ McFood")
+            /* ndk {
+                abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
+            } */
         }
     }
 
@@ -54,11 +63,23 @@ android {
         versionName = flutter.versionName
     }
 
+    splits {
+        abi {
+            isEnable = false // Disabilita la suddivisione per ABI
+        }
+    }
+    
     signingConfigs {
-        create("release") {
+       /*  release {
+            keyAlias 'key0'
+            keyPassword '20YesPlus24!'
+            storeFile file('/Users/simonemonaco/Sviluppo/flutter/yesplus/yesplus')
+            storePassword '20YesPlus24!'
+        } */
+         create("release") {
             keyAlias = "key0"
             keyPassword = "20YesPlus24!"
-            storeFile = file("/Users/simonemonaco/Sviluppo/flutter/yesplus/yesplus") // Update path if needed
+            storeFile = file("yesplus.jks")
             storePassword = "20YesPlus24!"
         }
     }

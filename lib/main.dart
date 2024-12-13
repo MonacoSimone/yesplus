@@ -73,3 +73,4 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+//flutter build apk --flavor gelomare --debug --no-shrink
