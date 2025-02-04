@@ -1832,6 +1832,11 @@ class ConnessioneController extends GetxController {
     }
   }
 
+  void showImei() async {
+    var imei = await DatabaseHelper().getIMEI();
+    stato.add('IMEI: $imei'.obs);
+  }
+
   Future<int> step1() async {
     var dioClient = dio.Dio();
     try {

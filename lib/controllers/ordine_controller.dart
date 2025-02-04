@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:collection';
 import 'package:dio/dio.dart' as dio;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -27,7 +28,7 @@ class OrdineController extends GetxController {
   RxDouble dialogHeightBack = 0.0.obs;
   TextEditingController textQta = TextEditingController(text: '1.0');
   TextEditingController textDescr =
-      TextEditingController(text: 'Descrizione Prdototto');
+      TextEditingController(text: 'Descrizione Prodotto');
   FocusNode textDescrNode = FocusNode();
 
   TextEditingController textSc1 = TextEditingController(text: 'Sconto 1');
@@ -36,6 +37,7 @@ class OrdineController extends GetxController {
   FocusNode textSc2Node = FocusNode();
   TextEditingController textSc3 = TextEditingController(text: 'Sconto 3');
   FocusNode textSc3Node = FocusNode();
+  TextEditingController noteController = TextEditingController();
 
   //Carrello cart = Carrello(prodotti: <Prodotti>[].obs).obs;
   RxList<cart.ProdottoCarrello> prodottiCarrello =
@@ -121,12 +123,12 @@ class OrdineController extends GetxController {
       // Controlla se il TextField ha ottenuto il focus
       if (textDescrNode.hasFocus) {
         // Se sì, cancella il testo
-        if (textDescr.text == 'Descrizione Prdototto') {
+        if (textDescr.text == 'Descrizione Prodotto') {
           textDescr.clear();
         }
       } else {
         if (textDescr.text.isEmpty) {
-          textDescr.text = 'Descrizione Prdototto';
+          textDescr.text = 'Descrizione Prodotto';
         }
       }
     });
@@ -261,9 +263,16 @@ class OrdineController extends GetxController {
   Future<void> filtraProdottiAcquistati(int mbpcId) async {
     var prodottiTemp = await DatabaseHelper().getProdottiAcquistati(mbpcId);
     List<int> ids = prodottiTemp.map((e) => e['FTAR_MGAA_ID'] as int).toList();
+    debugPrint(ids.toString());
     prodotti.clear();
-    prodotti.value =
-        prodottiOri.where((prodotto) => ids.contains(prodotto.id)).toList();
+    for (int id in ids) {
+      for (var prodotto in prodottiOri) {
+        if (prodotto.id == id) {
+          prodotti.add(prodotto);
+          break;
+        }
+      }
+    }
   }
 
   filtraProdottiDescr(String descr) {
@@ -299,8 +308,8 @@ class OrdineController extends GetxController {
     disponibilita.value = jsonDecode(response.toString())['disp'].toString(); */
   }
 
-  Future<int> salvaOrdine(
-      int mbpc_id, int mban_id, double totale, WebSocketController wc) async {
+  Future<int> salvaOrdine(int mbpc_id, int mban_id, double totale,
+      WebSocketController wc, String note) async {
     String imei = await DatabaseHelper().getIMEI();
     int? ocanAppId = (await DatabaseHelper().getOcanAppId())!;
     int octiId = await DatabaseHelper().getTipoOrdine();
@@ -370,9 +379,10 @@ class OrdineController extends GetxController {
         "OCAN_DataIns": "@DATA_INS",
         "OCAN_DataConf": "@DATA_CONF",
         "OCAN_Stamp": 0,
-        "OCAN_NoteIniz": "",
+        "OCAN_NoteIniz": note,
         "OCAN_NoteFin": "",
         "OCAN_Evaso": 0,
+        "OCAN_Cambio": 1,
         "OCAN_ParzEvaso": 0,
         "OCAN_EvasoForz": 0,
         "OCAN_MBDI_ID": 59,

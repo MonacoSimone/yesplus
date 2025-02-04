@@ -138,63 +138,61 @@ class Incassi extends StatelessWidget {
                 ))
           ],
         ),
-        SizedBox(
-          width: double.infinity,
-          child: Expanded(
-              child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Color(0xffffffff),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: cc.clienteSelezionato.value.mbanId != 0
-                  ? SingleChildScrollView(
-                      child: GetBuilder<IncassiController>(
-                        builder: (ic) => (DataTable(
-                          columns: ic.header,
-                          rows: List.generate(
-                              ic.scadenziario.length,
-                              (index) => DataRow(
-                                      selected: ic.selectedRows.contains(
-                                          ic.scadenziario[index].capaId),
-                                      onSelectChanged: (isSelected) {
-                                        ic.toggleRowSelection(
-                                            ic.scadenziario[index].capaId,
-                                            isSelected ?? false);
-                                      },
-                                      cells: <DataCell>[
-                                        DataCell(Text(ic
-                                            .scadenziario[index].capaNumDoc
-                                            .toString())),
-                                        DataCell(Text(ic
-                                            .scadenziario[index].capaAnnoDoc
-                                            .toString())),
-                                        DataCell(Text(ic.getScadenza(index))),
-                                        DataCell(Text(
-                                            '€ ${ic.scadenziario[index].capaImportoDare.toStringAsFixed(2)}')),
-                                        DataCell(Text(
-                                            '€ ${ic.scadenziario[index].capaImportoAvere.toStringAsFixed(2)}')),
-                                        DataCell(Text(
-                                            '€ ${ic.scadenziario[index].capaResiduo.toStringAsFixed(2)}'))
-                                      ])),
-                        )),
-                      ),
-                    )
-                  : const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Seleziona un cliente',
-                          style: TextStyle(
-                              fontSize: 25, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
+        Expanded(
+            child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Color(0xffffffff),
+              borderRadius: BorderRadius.circular(10),
             ),
-          )),
-        )
+            child: cc.clienteSelezionato.value.mbanId != 0
+                ? SingleChildScrollView(
+                    child: GetBuilder<IncassiController>(
+                      builder: (ic) => (DataTable(
+                        columns: ic.header,
+                        rows: List.generate(
+                            ic.scadenziario.length,
+                            (index) => DataRow(
+                                    selected: ic.selectedRows.contains(
+                                        ic.scadenziario[index].capaId),
+                                    onSelectChanged: (isSelected) {
+                                      ic.toggleRowSelection(
+                                          ic.scadenziario[index].capaId,
+                                          isSelected ?? false);
+                                    },
+                                    cells: <DataCell>[
+                                      DataCell(Text(ic
+                                          .scadenziario[index].capaNumDoc
+                                          .toString())),
+                                      DataCell(Text(ic
+                                          .scadenziario[index].capaAnnoDoc
+                                          .toString())),
+                                      DataCell(Text(ic.getScadenza(index))),
+                                      DataCell(Text(
+                                          '€ ${ic.scadenziario[index].capaImportoDare.toStringAsFixed(2)}')),
+                                      DataCell(Text(
+                                          '€ ${ic.scadenziario[index].capaImportoAvere.toStringAsFixed(2)}')),
+                                      DataCell(Text(
+                                          '€ ${ic.scadenziario[index].capaResiduo.toStringAsFixed(2)}'))
+                                    ])),
+                      )),
+                    ),
+                  )
+                : const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Seleziona un cliente',
+                        style: TextStyle(
+                            fontSize: 25, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+          ),
+        ))
       ],
     );
   }

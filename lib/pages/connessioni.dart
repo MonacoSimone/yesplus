@@ -21,7 +21,7 @@ class Connessioni extends StatelessWidget {
     coc.getServerAddressApi();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('CONNESSINOE AL SERVER'),
+        title: const Text('CONNESSIONE AL SERVER'),
         centerTitle: true,
         actions: [
           Padding(
@@ -209,7 +209,7 @@ class Connessioni extends StatelessWidget {
                       child: const Padding(
                         padding: EdgeInsets.all(8.0),
                         child: Text(
-                          'Crica Clienti',
+                          'Carica Clienti',
                           style: TextStyle(
                               fontSize: 20, fontWeight: FontWeight.w600),
                         ),
@@ -242,9 +242,10 @@ class Connessioni extends StatelessWidget {
                   InkWell(
                     onTap: () async {
                       //Get.to(() => MessagesPage());
+                      coc.showImei();
                       //await coc.initOC_Anagr(33, 6);
                       //await coc.initOC_Arti(33, 6);
-                      await coc.initZprezziTv();
+                      //await coc.initZprezziTv();
                       //await coc.getMBDiv();
                       //await coc.getMBSoc();
                     },
@@ -258,7 +259,7 @@ class Connessioni extends StatelessWidget {
                       child: const Padding(
                         padding: EdgeInsets.all(8.0),
                         child: Text(
-                          'Messaggi',
+                          'Codice Dispositivo',
                           style: TextStyle(
                               fontSize: 20, fontWeight: FontWeight.w600),
                         ),

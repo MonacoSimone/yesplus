@@ -1971,7 +1971,8 @@ WHERE FTAN_MBPC_ID=$mbpcId AND substr(FTAN_DataIns,1,4)>='${DateTime.now().year 
               CASE (OCAN_Evaso+(10*OCAN_ParzEvaso)+(100*OCAN_EvasoForz)) WHEN 0 THEN 'Non evaso' WHEN 1 THEN 'Evaso' WHEN 10 THEN 'Parz. evaso' WHEN 100 THEN 'Forz. evaso' WHEN 101 THEN 'Forz. evaso' WHEN 110 THEN 'Forz. evaso' END as 'STATO_DOC'
               FROM OC_Anag  
               JOIN OC_Tipo ON OCTI_ID=OCAN_OCTI_Id 
-              WHERE 1=1 $mbpcIdAnd AND OCAN_DataIns>='$dataFormattata' $numDocAnd ORDER BY NUM_DOC DESC""";
+              WHERE 1=1 $mbpcIdAnd AND OCAN_DataIns>='$dataFormattata' $numDocAnd ORDER BY OCAN_DataIns DESC""";
+    debugPrint('queryOrdini:' + queryOrdini);
     String queryFatture =
         """ SELECT 'FTAN' as PREF_DOC, FTTI_Descr as 'TIPO_DOC',FTAN_MBPC_ID as 'ID_CLIENTE', FTAN_ID AS 'ID_DOC', FTAN_NumFatt as 'NUM_DOC', FTAN_DataIns AS 'DATA_DOC', 
               CASE WHEN FTAN_Contab = 1 THEN 'Contabilizzata' ELSE 
@@ -1982,7 +1983,7 @@ WHERE FTAN_MBPC_ID=$mbpcId AND substr(FTAN_DataIns,1,4)>='${DateTime.now().year 
               END as 'STATO_DOC'
               FROM FT_Anagr
               JOIN FT_Tipo ON FTTI_ID=FTAN_FTTI_Id 
-              WHERE 1=1 $mbpcIdAnd AND FTAN_DataIns>='$dataFormattata' $numDocAnd ORDER BY NUM_DOC DESC""";
+              WHERE 1=1 $mbpcIdAnd AND FTAN_DataIns>='$dataFormattata' $numDocAnd ORDER BY FTAN_DataIns DESC""";
     debugPrint('queryFatture:' + queryFatture);
     String queryBolle =
         """SELECT 'BLAN' as PREF_DOC, BLTI_Descr as 'TIPO_DOC',BLAN_MBPC_ID as 'ID_CLIENTE' , BLAN_Id as 'ID_DOC', BLAN_NumBol AS 'NUM_DOC', BLAN_DataIns as 'DATA_DOC', 
@@ -1992,7 +1993,7 @@ WHERE FTAN_MBPC_ID=$mbpcId AND substr(FTAN_DataIns,1,4)>='${DateTime.now().year 
               END as 'STATO_DOC' 
               FROM BL_Anag  
               JOIN BL_tipo ON BLTI_ID=BLAN_BLTI_ID
-              WHERE 1=1 $mbpcIdAnd AND BLAN_DataIns>='$dataFormattata' $numDocAnd ORDER BY NUM_DOC DESC""";
+              WHERE 1=1 $mbpcIdAnd AND BLAN_DataIns>='$dataFormattata' $numDocAnd ORDER BY BLAN_DataIns DESC""";
     String queryGenerale = """SELECT 1""";
     switch (tipo) {
       case '':

@@ -418,7 +418,7 @@ class Ordine extends StatelessWidget {
                                                   child: const Text('ok')))
                                           : Get.defaultDialog(
                                               title:
-                                                  'Scegli il tipo di operazione',
+                                                  'Confermi la creazione dell\'ordine?',
                                               titleStyle: const TextStyle(
                                                   fontSize: 25,
                                                   fontWeight: FontWeight.w700),
@@ -426,6 +426,22 @@ class Ordine extends StatelessWidget {
                                                 width: context.width * 0.6,
                                                 child: Column(
                                                   children: [
+                                                    const SizedBox(
+                                                        height:
+                                                            20), // Aggiungi spazio sopra il campo di testo
+                                                    TextField(
+                                                      decoration:
+                                                          const InputDecoration(
+                                                        labelText: 'Note',
+                                                        border:
+                                                            OutlineInputBorder(),
+                                                      ),
+                                                      controller: ordineCt
+                                                          .noteController, // Aggiungi un controller per il campo di testo
+                                                    ),
+                                                    const SizedBox(
+                                                        height:
+                                                            40), // Aggiungi spazio sotto il campo di testo
                                                     Padding(
                                                       padding:
                                                           const EdgeInsets.only(
@@ -436,104 +452,85 @@ class Ordine extends StatelessWidget {
                                                       child: Row(
                                                         mainAxisAlignment:
                                                             MainAxisAlignment
-                                                                .spaceBetween,
+                                                                .spaceAround,
                                                         children: [
                                                           SizedBox(
                                                             width: 150,
                                                             height: 50,
                                                             child: FilledButton(
-                                                                onPressed: () {
-                                                                  ordineCt.salvaOrdine(
-                                                                      _clienteCt
-                                                                          .clienteSelezionato
-                                                                          .value
-                                                                          .mbpcId,
-                                                                      _clienteCt
-                                                                          .clienteSelezionato
-                                                                          .value
-                                                                          .mbanId,
-                                                                      ordineCt
-                                                                          .totale
-                                                                          .value,
-                                                                      wc);
-                                                                },
-                                                                child:
-                                                                    const Text(
-                                                                  'Ordine',
+                                                              onPressed:
+                                                                  () async {
+                                                                // Passa le note al metodo salvaOrdine
+                                                                await ordineCt
+                                                                    .salvaOrdine(
+                                                                  _clienteCt
+                                                                      .clienteSelezionato
+                                                                      .value
+                                                                      .mbpcId,
+                                                                  _clienteCt
+                                                                      .clienteSelezionato
+                                                                      .value
+                                                                      .mbanId,
+                                                                  ordineCt
+                                                                      .totale
+                                                                      .value,
+                                                                  wc,
+                                                                  ordineCt
+                                                                      .noteController
+                                                                      .text, // Passa il testo delle note
+                                                                );
+                                                                ordineCt
+                                                                    .prodottiCarrello
+                                                                    .clear();
+                                                                ordineCt.totale
+                                                                    .value = 0;
+                                                                ordineCt
+                                                                    .subTotale
+                                                                    .value = 0;
+                                                                ordineCt.sconto
+                                                                    .value = 0;
+                                                                ordineCt.tasse
+                                                                    .value = 0;
+                                                                ordineCt
+                                                                    .noteController
+                                                                    .clear(); // Cancella il testo delle note
+                                                              },
+                                                              child: const Text(
+                                                                  'Conferma',
                                                                   style: TextStyle(
                                                                       fontSize:
-                                                                          20),
-                                                                )),
+                                                                          20)),
+                                                            ),
                                                           ),
                                                           SizedBox(
                                                             width: 150,
                                                             height: 50,
                                                             child: FilledButton(
-                                                                onPressed:
-                                                                    () {},
-                                                                child: const Text(
-                                                                    'Fattura',
-                                                                    style: TextStyle(
-                                                                        fontSize:
-                                                                            20))),
-                                                          ),
-                                                          SizedBox(
-                                                            width: 150,
-                                                            height: 50,
-                                                            child: FilledButton(
-                                                                onPressed:
-                                                                    () {},
-                                                                child: const Text(
-                                                                    'DDT',
-                                                                    style: TextStyle(
-                                                                        fontSize:
-                                                                            20))),
-                                                          ),
-                                                          SizedBox(
-                                                            width: 150,
-                                                            height: 50,
-                                                            child: FilledButton(
-                                                                onPressed:
-                                                                    () {},
-                                                                child: const Text(
-                                                                    'DDT2',
-                                                                    style: TextStyle(
-                                                                        fontSize:
-                                                                            20))),
-                                                          )
-                                                        ],
-                                                      ),
-                                                    ),
-                                                    Row(
-                                                      mainAxisAlignment:
-                                                          MainAxisAlignment
-                                                              .center,
-                                                      children: [
-                                                        SizedBox(
-                                                          width: 150,
-                                                          height: 50,
-                                                          child: FilledButton(
-                                                              style: const ButtonStyle(
-                                                                  backgroundColor:
-                                                                      MaterialStatePropertyAll<
-                                                                              Color>(
-                                                                          Colors
-                                                                              .red)),
+                                                              style:
+                                                                  const ButtonStyle(
+                                                                backgroundColor:
+                                                                    MaterialStatePropertyAll<
+                                                                            Color>(
+                                                                        Colors
+                                                                            .red),
+                                                              ),
                                                               onPressed: () {
                                                                 Get.back();
                                                               },
                                                               child: const Text(
-                                                                'Chiudi',
-                                                                style: TextStyle(
-                                                                    fontSize:
-                                                                        20),
-                                                              )),
-                                                        ),
-                                                      ],
-                                                    )
+                                                                  'Chiudi',
+                                                                  style: TextStyle(
+                                                                      fontSize:
+                                                                          20)),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
                                                   ],
                                                 ),
-                                              ));
+                                              ),
+                                            );
                                     },
                                     child: Container(
                                       alignment: Alignment.center,

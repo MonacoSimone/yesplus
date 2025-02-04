@@ -33,7 +33,7 @@ class FatturatoChart extends StatelessWidget {
                   height: 8,
                 ),
                 const Text(
-                  'Ventudo Cliente',
+                  'Venduto Cliente',
                   style: TextStyle(
                     color: Colors.black87,
                     fontSize: 32,

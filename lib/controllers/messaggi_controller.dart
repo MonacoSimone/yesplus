@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../models/messaggio_da_inviare.dart';
 import '../database/db_helper.dart';
@@ -17,6 +18,7 @@ class MessaggiController extends GetxController {
     try {
       isLoading(true);
       var messaggiMap = await DatabaseHelper().getMessaggiDaInviare();
+      debugPrint(messaggiMap.toString());
       // Converti la lista di mappe in una lista di oggetti Messaggio
       var messaggi = messaggiMap.map((map) => Messaggio.fromMap(map)).toList();
       if (messaggi.isNotEmpty) {

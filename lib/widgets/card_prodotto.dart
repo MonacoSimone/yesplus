@@ -141,10 +141,14 @@ class CardProdotto extends StatelessWidget {
                                                   CircularProgressIndicator());
                                         } else if (snapshot.hasError ||
                                             !snapshot.data!) {
+                                          debugPrint(
+                                              'sto in snapshot.hasError');
                                           return Image.asset(
                                               flavorScripts.getAssetImagePath(
                                                   'EMPTY_NORM.png'));
                                         } else {
+                                          debugPrint(
+                                              'Sto nella costruzine dell\'immagine');
                                           return FadeInImage.assetNetwork(
                                             fit: BoxFit.cover,
                                             placeholder:
@@ -154,13 +158,20 @@ class CardProdotto extends StatelessWidget {
                                                 (BuildContext context,
                                                     Object exception,
                                                     StackTrace? stackTrace) {
+                                              debugPrint(exception.toString());
+                                              debugPrint(
+                                                  'error builder: ${exception.toString()}');
                                               if (exception
                                                   .toString()
                                                   .contains('404')) {
+                                                debugPrint('sto in 404');
                                                 return Image.asset(flavorScripts
                                                     .getAssetImagePath(
                                                         'EMPTY_NORM.png'));
                                               }
+                                              debugPrint('sto sotto il 404');
+                                              debugPrint(
+                                                  '$serverApi/images/${matricola}_NORM.jpg');
                                               return Image.asset(flavorScripts
                                                   .getAssetImagePath(
                                                       'EMPTY_NORM.png'));
