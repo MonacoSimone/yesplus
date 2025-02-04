@@ -3292,6 +3292,7 @@ ENABLE TRIGGER [dbo].[Z_APP_OC_Pagam] ON [dbo].[OC_Pagam];
 ENABLE TRIGGER [dbo].[Z_APP_OC_Tipo] ON [dbo].[OC_Tipo];
 ENABLE TRIGGER [dbo].[Z_APP_Partite] ON [dbo].[CA_Partite];
 ENABLE TRIGGER [dbo].[Z_APP_AnaArt] ON [dbo].[MG_AnaArt];
+ENABLE TRIGGER [dbo].[Z_APP_Anagr] ON [dbo].[MB_Anagr];
 
 DISABLE TRIGGER [dbo].[Z_APP_TR_OC_Anag] ON [dbo].[OC_Anag];
 DISABLE TRIGGER [dbo].[Z_APP_TR_BL_Anag] ON [dbo].[BL_Anag];
@@ -3311,6 +3312,7 @@ DISABLE TRIGGER [dbo].[Z_APP_OC_Pagam] ON [dbo].[OC_Pagam];
 DISABLE TRIGGER [dbo].[Z_APP_OC_Tipo] ON [dbo].[OC_Tipo];
 DISABLE TRIGGER [dbo].[Z_APP_Partite] ON [dbo].[CA_Partite];
 DISABLE TRIGGER [dbo].[Z_APP_AnaArt] ON [dbo].[MG_AnaArt];
+DISABLE TRIGGER [dbo].[Z_APP_Anagr] ON [dbo].[MB_Anagr];
 ```
   * trigger
 ```
