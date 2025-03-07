@@ -18,11 +18,16 @@ class MessaggiController extends GetxController {
     try {
       isLoading(true);
       var messaggiMap = await DatabaseHelper().getMessaggiDaInviare();
-      debugPrint(messaggiMap.toString());
-      // Converti la lista di mappe in una lista di oggetti Messaggio
-      var messaggi = messaggiMap.map((map) => Messaggio.fromMap(map)).toList();
-      if (messaggi.isNotEmpty) {
-        messaggiList.value = messaggi;
+      debugPrint('MEssaggi ${messaggiMap.toString()}');
+      if (messaggiMap != null) {
+        // Converti la lista di mappe in una lista di oggetti Messaggio
+        var messaggi =
+            messaggiMap.map((map) => Messaggio.fromMap(map)).toList();
+        if (messaggi.isNotEmpty) {
+          messaggiList.value = messaggi;
+        }
+      } else {
+        debugPrint('messaggiMap is null');
       }
     } finally {
       isLoading(false);

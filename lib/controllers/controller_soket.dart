@@ -213,6 +213,212 @@ class WebSocketController extends GetxController {
   }
 
   Future<int> sendPendingMessages() async {
+    Map<int, Map<String, List<Messaggio>>> ordini = {};
+    Map<int, Map<String, List<Messaggio>>> pagamentiFornitore = {};
+
+    for (Messaggio message in messages) {
+      try {
+        var messageData = message.toJson()['METS_Message'];
+        messageData = jsonDecode(messageData);
+        String table = messageData['TABLE'];
+        int? id;
+
+        if (table == 'OC_Anag') {
+          id = int.parse(messageData['DATA']['OCAN_APP_ID'].split('-')[1]);
+          if (!ordini.containsKey(id)) {
+            ordini[id] = {'OC_Anag': [], 'OC_Artic': [], 'OC_Pagam': []};
+          }
+          ordini[id]![table]?.add(message);
+        } else if (table == 'OC_Artic' || table == 'OC_Pagam') {
+          id = messageData['DATA']
+              [table == 'OC_Artic' ? 'OCAR_OCAN_Id' : 'OCPG_OCAN_Id'];
+          if (id != null && ordini.containsKey(id)) {
+            ordini[id]![table]?.add(message);
+          }
+        } else if (table == 'PF_Anag') {
+          id = int.parse(messageData['DATA']['PFAN_APP_ID'].split('-')[1]);
+          if (!pagamentiFornitore.containsKey(id)) {
+            pagamentiFornitore[id] = {'PF_Anag': [], 'PF_Dett': []};
+          }
+          pagamentiFornitore[id]![table]?.add(message);
+        } else if (table == 'PF_Dett') {
+          id = messageData['DATA']['PFDT_PFAN_ID'];
+          if (id != null && pagamentiFornitore.containsKey(id)) {
+            pagamentiFornitore[id]![table]?.add(message);
+          }
+        }
+      } catch (e) {
+        debugPrint('Errore durante l\'elaborazione del messaggio: $e');
+        return 0;
+      }
+    }
+
+    // Elaborazione degli ordini (OC)
+    for (int ocanId in ordini.keys) {
+      var ordine = ordini[ocanId]!;
+
+      try {
+        if (ordine['OC_Anag']!.isNotEmpty) {
+          Messaggio testataOrdine = ordine['OC_Anag']!.first;
+          await DatabaseHelper()
+              .deleteMessage(testataOrdine.toJson()['METS_ID']);
+          int nuovoOcanId = await sendMessage(testataOrdine);
+
+          await DatabaseHelper().updateOcanAnag(nuovoOcanId, ocanId);
+          debugPrint('Nuovo OCAN_ID per OC_Anag: $nuovoOcanId');
+
+          for (Messaggio rigaOrdine in ordine['OC_Artic']!) {
+            var rigaData = rigaOrdine.toJson()['METS_Message'];
+            rigaData = jsonDecode(rigaData);
+            rigaData['DATA']['OCAR_OCAN_Id'] = nuovoOcanId;
+            rigaOrdine.metsMessage = jsonEncode(rigaData);
+            await DatabaseHelper().updateOcanArtic(nuovoOcanId, ocanId);
+            await DatabaseHelper()
+                .deleteMessage(rigaOrdine.toJson()['METS_ID']);
+            await sendMessage(rigaOrdine);
+
+            debugPrint(
+                'Riga ordine aggiornata e inviata: ${rigaOrdine.metsMessage}');
+          }
+
+          for (Messaggio pagamento in ordine['OC_Pagam']!) {
+            var pagamentoData = pagamento.toJson()['METS_Message'];
+            pagamentoData = jsonDecode(pagamentoData);
+            pagamentoData['DATA']['OCPG_OCAN_Id'] = nuovoOcanId;
+            pagamento.metsMessage = jsonEncode(pagamentoData);
+            await DatabaseHelper().deleteMessage(pagamento.toJson()['METS_ID']);
+            await sendMessage(pagamento);
+
+            debugPrint(
+                'Pagamento aggiornato e inviato: ${pagamento.metsMessage}');
+          }
+        }
+      } catch (e) {
+        debugPrint('Errore durante l\'elaborazione dell\'ordine $ocanId: $e');
+        return 0;
+      }
+    }
+
+    // Elaborazione dei pagamenti fornitore (PF)
+    for (int pfanId in pagamentiFornitore.keys) {
+      var pagamentoFornitore = pagamentiFornitore[pfanId]!;
+      debugPrint('Pagamento fornitore: ${pagamentoFornitore.toString()}');
+      try {
+        if (pagamentoFornitore['PF_Anag']!.isNotEmpty) {
+          Messaggio testataPagamentoFornitore =
+              pagamentoFornitore['PF_Anag']!.first;
+          await DatabaseHelper()
+              .deleteMessage(testataPagamentoFornitore.toJson()['METS_ID']);
+          int nuovoPfanId = await sendMessage(testataPagamentoFornitore);
+
+          debugPrint('Nuovo PFAN_ID per PF_Anag: $nuovoPfanId');
+
+          for (Messaggio dettaglioPagamentoFornitore
+              in pagamentoFornitore['PF_Dett']!) {
+            var dettaglioData =
+                dettaglioPagamentoFornitore.toJson()['METS_Message'];
+            dettaglioData = jsonDecode(dettaglioData);
+            dettaglioData['DATA']['PFDT_PFAN_ID'] = nuovoPfanId;
+            dettaglioPagamentoFornitore.metsMessage = jsonEncode(dettaglioData);
+            await DatabaseHelper()
+                .deleteMessage(dettaglioPagamentoFornitore.toJson()['METS_ID']);
+            await sendMessage(dettaglioPagamentoFornitore);
+
+            debugPrint(
+                'Dettaglio pagamento fornitore aggiornato e inviato: ${dettaglioPagamentoFornitore.metsMessage}');
+          }
+        }
+      } catch (e) {
+        debugPrint(
+            'Errore durante l\'elaborazione del pagamento fornitore $pfanId: $e');
+        return 0;
+      }
+    }
+
+    return 1;
+  }
+
+  /* Future<int> sendPendingMessages() async {
+    Map<int, Map<String, List<Messaggio>>> ordini = {};
+
+    for (Messaggio message in messages) {
+      try {
+        var messageData = message.toJson()['METS_Message'];
+        messageData = jsonDecode(messageData);
+        String table = messageData['TABLE'];
+        int? ocanId;
+
+        if (table == 'OC_Anag') {
+          ocanId = int.parse(messageData['DATA']['OCAN_APP_ID'].split('-')[1]);
+        } else if (table == 'OC_Artic') {
+          ocanId = messageData['DATA']['OCAR_OCAN_Id'];
+        } else if (table == 'OC_Pagam') {
+          ocanId = messageData['DATA']['OCPG_OCAN_Id'];
+        }
+
+        if (ocanId != null) {
+          if (!ordini.containsKey(ocanId)) {
+            ordini[ocanId] = {
+              'OC_Anag': [],
+              'OC_Artic': [],
+              'OC_Pagam': [],
+            };
+          }
+          ordini[ocanId]![table]?.add(message);
+        }
+      } catch (e) {
+        debugPrint('Errore durante l\'elaborazione del messaggio: $e');
+        return 0; // o altra gestione dell'errore
+      }
+    }
+
+    for (int ocanId in ordini.keys) {
+      var ordine = ordini[ocanId]!;
+
+      try {
+        if (ordine['OC_Anag']!.isNotEmpty) {
+          Messaggio testataOrdine = ordine['OC_Anag']!.first;
+          int nuovoOcanId = await sendMessage(testataOrdine);
+          await DatabaseHelper()
+              .deleteMessage(testataOrdine.toJson()['METS_ID']);
+          await DatabaseHelper().updateOcanAnag(nuovoOcanId, ocanId);
+          debugPrint('Nuovo OCAN_ID per OC_Anag: $nuovoOcanId');
+
+          // Aggiorna e invia righe e pagamenti
+          for (Messaggio rigaOrdine in ordine['OC_Artic']!) {
+            var rigaData = rigaOrdine.toJson()['METS_Message'];
+            rigaData = jsonDecode(rigaData);
+            rigaData['DATA']['OCAR_OCAN_Id'] = nuovoOcanId;
+            rigaOrdine.metsMessage = jsonEncode(rigaData);
+            await DatabaseHelper().updateOcanArtic(nuovoOcanId, ocanId);
+            await sendMessage(rigaOrdine);
+            await DatabaseHelper()
+                .deleteMessage(rigaOrdine.toJson()['METS_ID']);
+            debugPrint(
+                'Riga ordine aggiornata e inviata: ${rigaOrdine.metsMessage}');
+          }
+
+          for (Messaggio pagamento in ordine['OC_Pagam']!) {
+            var pagamentoData = pagamento.toJson()['METS_Message'];
+            pagamentoData = jsonDecode(pagamentoData);
+            pagamentoData['DATA']['OCPG_OCAN_Id'] = nuovoOcanId;
+            pagamento.metsMessage = jsonEncode(pagamentoData);
+            await sendMessage(pagamento);
+            await DatabaseHelper().deleteMessage(pagamento.toJson()['METS_ID']);
+            debugPrint(
+                'Pagamento aggiornato e inviato: ${pagamento.metsMessage}');
+          }
+        }
+      } catch (e) {
+        debugPrint('Errore durante l\'elaborazione dell\'ordine $ocanId: $e');
+        return 0; // o altra gestione dell'errore
+      }
+    }
+
+    return 1;
+  } */
+
+/*   Future<int> sendPendingMessages() async {
     // 2. Raggruppa i messaggi per OCAN_ID (ordine)
     Map<int, Map<String, List<Messaggio>>> ordini = {};
 
@@ -311,7 +517,7 @@ class WebSocketController extends GetxController {
       }
     }
     return 1;
-  }
+  } */
 
 // Funzione che invia un messaggio di testata e ritorna l'OCAN_ID
   Future<int> sendMessageAndGetOcanId(Messaggio message) async {
@@ -504,6 +710,10 @@ class WebSocketController extends GetxController {
           case 'MG_AnaArt':
             whereClause = 'MGAA_ID=?';
             values.add(data['MGAA_ID']);
+            break;
+          case 'MB_CliForDest':
+            whereClause = 'MBDT_ID=?';
+            values.add(data['MBDT_ID']);
             break;
           case 'OC_Artic':
             if (data['OCAR_APP_ID'] == null || data['OCAR_APP_ID'].isEmpty) {

@@ -1,7 +1,8 @@
 import 'dart:convert';
-
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:yesplus/models/destinatari.dart';
 import '../models/sconto.dart';
 import '../models/zprezzitv.dart';
 import '../models/tipoArticolo.dart';
@@ -23,14 +24,16 @@ import '../models/tipobolla.dart';
 import '../models/tipofattura.dart';
 import '../models/tipoordine.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart' as path_provider;
+import 'package:share_plus/share_plus.dart';
 
 class DatabaseHelper {
   late Database _database;
 
   Future<Database> _currentDatabase() async {
     _database =
-        await openDatabase(join(await getDatabasesPath(), 'order_entry.db'),
+        await openDatabase(p.join(await getDatabasesPath(), 'order_entry.db'),
             onCreate: (database, version) async {
       debugPrint('createDatabase');
       const sqlMGAnaArt = """CREATE TABLE MG_AnaArt(
@@ -74,6 +77,11 @@ class DatabaseHelper {
                             "MBAN_Sconto3" FLOAT,
                             "MBAN_ID"	INTEGER
                           )""";
+      const sqlMBCliForDest = """CREATE TABLE "MB_CliForDest" (
+                                "MBDT_ID" INTEGER NOT NULL,
+                                "MBDT_Destinatario" TEXT,
+                                "MBDT_MBAN_ID" INTEGER
+                            )""";
       const sqlParam = """CREATE TABLE "SP_Param" (	
               "SPPA_ID"	INTEGER NOT NULL UNIQUE,
               "SPPA_IndirizzoServerAPI" TEXT,
@@ -213,6 +221,10 @@ class DatabaseHelper {
                       "APPR_ID" INTEGER,
                       "APPT_ID" INTEGER);""";
 
+      const sqlPfId = """CREATE TABLE "PF_APP_ID" (
+                      "APPT_ID" INTEGER,
+                      "APPD_ID" INTEGER);""";
+
       const sqlBLAnagr = """CREATE TABLE "BL_Anag" (
             "BLAN_ID"	INTEGER NOT NULL,
             "BLAN_BLTI_ID"	INTEGER,
@@ -241,6 +253,7 @@ class DatabaseHelper {
             "BLAR_ScontiFinali" REAL,
             "BLAR_DQTA" REAL);""";
       const sqlCAPartite = """CREATE TABLE "CA_Partite" (	
+          "CAPA_RIF_FATT" TEXT,
           "CAPA_Id" INTEGER,
           "CAPA_CASP_Stato" INTEGER,
           "CAPA_MBPC_ID" INT,
@@ -310,6 +323,7 @@ class DatabaseHelper {
       await database.execute(sqlIva);
       await database.execute(sqlMGAnaArt);
       await database.execute(sqlMBAnagr);
+      await database.execute(sqlMBCliForDest);
       await database.execute(sqlParam);
       await database.execute(sqlArtic);
       await database.execute(sqlFTTipo);
@@ -328,15 +342,57 @@ class DatabaseHelper {
       await database.execute(sqlMBTipoConto);
       await database.execute(sqlPrezziTV);
       await database.execute(sqlOcarAppId);
+      await database.execute(sqlPfId);
       await database.rawQuery(
           "INSERT INTO SP_Param (SPPA_IndirizzoServerAPI) VALUES (null) ");
       await database
           .rawQuery("INSERT INTO OC_APP_ID (APPR_ID,APPT_ID) VALUES (0,0);");
+      await database
+          .rawQuery("INSERT INTO PF_APP_ID (APPT_ID,APPD_ID) VALUES (0,0);");
       //await database.rawQuery("UPDATE SP_Param SET SPPA_MBDV_ID=46");
       //await database.rawQuery("UPDATE SP_Param SET SPPA_MBSC_ID=38");
     }, version: 1);
 
     return _database;
+  }
+
+  Future<void> exportDatabase() async {
+    // Ottieni la directory del database
+    final dbPath = await getDatabasesPath();
+    final dbFile = File(p.join(dbPath, 'order_entry.db'));
+
+    // Ottieni la directory locale in cui esportare il database
+    final Directory? directory = await path_provider.getDownloadsDirectory();
+    //final exportPath = directory.path;
+
+    // Crea una copia del database nella directory locale
+    final File copiedDbFile =
+        await dbFile.copy(p.join(directory!.path, 'order_entry.db'));
+
+    // Invia un messaggio all'utente
+    print('Database esportato in: ${copiedDbFile.path}');
+  }
+
+  Future<void> exportDatabase1() async {
+    // Ottieni il percorso del database
+    final dbPath = await getDatabasesPath();
+    final dbFile = File(p.join(dbPath, 'order_entry.db'));
+
+    // Ottieni la directory locale in cui esportare il database
+    final Directory directory =
+        await path_provider.getApplicationDocumentsDirectory();
+    final exportPath = directory.path;
+
+    // Crea una copia del database nella directory locale
+    final File copiedDbFile =
+        await dbFile.copy(p.join(exportPath, 'order_entry.db'));
+
+    // Condividi il file esportato
+    final result = await Share.shareXFiles([XFile(copiedDbFile.path)]);
+
+    if (result.status == ShareResultStatus.success) {
+      print('Thank you for sharing the picture!');
+    }
   }
 
   Future<void> resetDatabase() async {
@@ -354,6 +410,101 @@ class DatabaseHelper {
     await db.rawQuery("DELETE FROM BL_Tipo");
     await db.rawQuery("DELETE FROM OC_Tipo");
     //db.close();
+  }
+
+  Future<void> clearMB_Anagr() async {
+    Database db = await _currentDatabase();
+    await db.rawQuery("DELETE FROM MB_Anagr");
+  }
+
+  Future<void> clearMB_CliForDest() async {
+    Database db = await _currentDatabase();
+    await db.rawQuery("DELETE FROM MB_CliForDest");
+  }
+
+  Future<void> clearCA_Partite() async {
+    Database db = await _currentDatabase();
+    await db.rawQuery("DELETE FROM CA_Partite");
+  }
+
+  Future<void> clearBL_Artic() async {
+    Database db = await _currentDatabase();
+    await db.rawQuery("DELETE FROM BL_Artic");
+  }
+
+  Future<void> clearBL_Anag() async {
+    Database db = await _currentDatabase();
+    await db.rawQuery("DELETE FROM BL_Anag");
+  }
+
+  Future<void> clearBL_Pagam() async {
+    Database db = await _currentDatabase();
+    await db.rawQuery("DELETE FROM BL_Pagam");
+  }
+
+  Future<void> clearOC_Artic() async {
+    Database db = await _currentDatabase();
+    await db.rawQuery("DELETE FROM OC_Artic");
+  }
+
+  Future<void> clearOC_Anag() async {
+    Database db = await _currentDatabase();
+    await db.rawQuery("DELETE FROM OC_Anag");
+  }
+
+  Future<void> clearOC_Pagam() async {
+    Database db = await _currentDatabase();
+    await db.rawQuery("DELETE FROM OC_Pagam");
+  }
+
+  Future<void> clearFT_Pagam() async {
+    Database db = await _currentDatabase();
+    await db.rawQuery("DELETE FROM FT_Pagam");
+  }
+
+  Future<void> clearFT_Artic() async {
+    Database db = await _currentDatabase();
+    await db.rawQuery("DELETE FROM FT_Artic");
+  }
+
+  Future<void> clearFT_Anagr() async {
+    Database db = await _currentDatabase();
+    await db.rawQuery("DELETE FROM FT_Anagr");
+  }
+
+  Future<void> clearSP_Param() async {
+    Database db = await _currentDatabase();
+    await db.rawQuery("DELETE FROM SP_Param");
+  }
+
+  Future<void> clearMG_Artic() async {
+    Database db = await _currentDatabase();
+    await db.rawQuery("DELETE FROM MG_Artic");
+  }
+
+  Future<void> clearZprezziTv() async {
+    Database db = await _currentDatabase();
+    await db.rawQuery("DELETE FROM Z_PrezziTV");
+  }
+
+  Future<void> clearFT_Tipo() async {
+    Database db = await _currentDatabase();
+    await db.rawQuery("DELETE FROM FT_Tipo");
+  }
+
+  Future<void> clearBL_Tipo() async {
+    Database db = await _currentDatabase();
+    await db.rawQuery("DELETE FROM BL_Tipo");
+  }
+
+  Future<void> clearOC_Tipo() async {
+    Database db = await _currentDatabase();
+    await db.rawQuery("DELETE FROM OC_Tipo");
+  }
+
+  Future<void> clearAgenti() async {
+    Database db = await _currentDatabase();
+    await db.rawQuery("DELETE FROM MB_Agenti");
   }
 
   Future<void> mod() async {
@@ -433,6 +584,31 @@ class DatabaseHelper {
     } catch (e) {
       return -1;
     }
+  }
+
+  Future<int> deleteAllMessages() async {
+    Database db = await _currentDatabase();
+    try {
+      int val = await db.rawDelete("DELETE FROM MessagesToSend ");
+      return val;
+    } catch (e) {
+      return -1;
+    }
+  }
+
+  Future<List<String>> getDestinatariByMBANId(int mbanId) async {
+    final db = await _currentDatabase();
+    final List<Map<String, dynamic>> maps = await db.query(
+      'MB_CliForDest',
+      columns: ['MBDT_Destinatario'],
+      where: 'MBDT_MBAN_ID = ?',
+      whereArgs: [mbanId],
+    );
+
+    print(maps.toString());
+    return List.generate(maps.length, (i) {
+      return maps[i]['MBDT_Destinatario'].toString();
+    });
   }
 
   Future<List<double?>> getScontiCliente(int clienteId, int prodottoId) async {
@@ -753,16 +929,16 @@ class DatabaseHelper {
                           MGAA_MBUM_Codice,
                           MGAA_MBIV_ID,
                           MGAA_Stato,
-                          NULL AS ZPTV_Sconto1,
-                          NULL AS ZPTV_Sconto2,
-                          NULL AS ZPTV_Sconto3
+                          CASE  WHEN (ZPTV_Sconto1 IS NULL OR ZPTV_Sconto1 =0 ) THEN (SELECT MBAN_Sconto1 FROM MB_Anagr WHERE MBPC_ID=$mbpcid) ELSE ZPTV_Sconto1 END AS Sconto1,
+						              CASE  WHEN (ZPTV_Sconto2 IS NULL OR ZPTV_Sconto2 =0 ) THEN (SELECT MBAN_Sconto2 FROM MB_Anagr WHERE MBPC_ID=$mbpcid) ELSE ZPTV_Sconto2 END AS Sconto2,
+						              CASE  WHEN (ZPTV_Sconto3 IS NULL OR ZPTV_Sconto3 =0 )  THEN (SELECT MBAN_Sconto3 FROM MB_Anagr WHERE MBPC_ID=$mbpcid) ELSE ZPTV_Sconto3 END AS Sconto3
                         FROM Z_PrezziTV
                         LEFT JOIN MG_AnaArt ON MGAA_ID= ZPTV_MGAA_ID
                         WHERE ZPTV_MBPC_Id IS NULL
                         AND ZPTV_MGAA_Id NOT IN (SELECT ZPTV_MGAA_Id FROM Z_PrezziTV WHERE ZPTV_MBPC_Id = $mbpcid) AND MGAA_Stato=1;""");
 
     //db.close();
-    debugPrint("""SELECT 
+/*     debugPrint("""SELECT 
                           ZPTV_MGAA_Id AS MGAA_ID,
                           ZPTV_Prezzo AS MGAA_PVendita,
                           MGAA_MBDC_Classe,
@@ -790,13 +966,13 @@ class DatabaseHelper {
                           MGAA_MBUM_Codice,
                           MGAA_MBIV_ID,
                           MGAA_Stato,
-                          NULL AS ZPTV_Sconto1,
-                          NULL AS ZPTV_Sconto2,
-                          NULL AS ZPTV_Sconto3
+                          CASE  WHEN (ZPTV_Sconto1 IS NULL OR ZPTV_Sconto1 =0 ) THEN (SELECT MBAN_Sconto1 FROM MB_Anagr WHERE MBPC_ID=$mbpcid) ELSE ZPTV_Sconto1 END AS Sconto1,
+						              CASE  WHEN (ZPTV_Sconto2 IS NULL OR ZPTV_Sconto2 =0 ) THEN (SELECT MBAN_Sconto2 FROM MB_Anagr WHERE MBPC_ID=$mbpcid) ELSE ZPTV_Sconto2 END AS Sconto2,
+						              CASE  WHEN (ZPTV_Sconto3 IS NULL OR ZPTV_Sconto3 =0 )  THEN (SELECT MBAN_Sconto3 FROM MB_Anagr WHERE MBPC_ID=$mbpcid) ELSE ZPTV_Sconto3 END AS Sconto3
                         FROM Z_PrezziTV
                         LEFT JOIN MG_AnaArt ON MGAA_ID= ZPTV_MGAA_ID
                         WHERE ZPTV_MBPC_Id IS NULL
-                        AND ZPTV_MGAA_Id NOT IN (SELECT ZPTV_MGAA_Id FROM Z_PrezziTV WHERE ZPTV_MBPC_Id = $mbpcid) AND MGAA_Stato=1;""");
+                        AND ZPTV_MGAA_Id NOT IN (SELECT ZPTV_MGAA_Id FROM Z_PrezziTV WHERE ZPTV_MBPC_Id = $mbpcid) AND MGAA_Stato=1;"""); */
     return List.generate(map.length, (i) {
       //debugPrint(map[i].toString());
       return Prodotto.fromJson(map[i]);
@@ -886,6 +1062,19 @@ class DatabaseHelper {
     });
   }
 
+  Future<String> initDbCliForDest(MbCliForDest dest) async {
+    Database db = await _currentDatabase();
+
+    return await db.transaction((txn) async {
+      try {
+        await txn.insert('MB_CliForDest', dest.toJson());
+        return 'ok';
+      } catch (e) {
+        return 'err: $e';
+      }
+    });
+  }
+
   Future<String> updateDbScontiBatch(List<Sconto> sconti) async {
     Database db = await _currentDatabase();
 
@@ -929,6 +1118,21 @@ class DatabaseHelper {
       try {
         for (Cliente cliente in clienti) {
           await txn.insert('MB_Anagr', cliente.toJson());
+        }
+        return 'ok';
+      } catch (e) {
+        return 'err: $e';
+      }
+    });
+  }
+
+  Future<String> initDbMBCliForDestBatch(
+      List<MbCliForDest> destinazioni) async {
+    Database db = await _currentDatabase();
+    return await db.transaction((txn) async {
+      try {
+        for (MbCliForDest dest in destinazioni) {
+          await txn.insert('MB_CliForDest', dest.toJson());
         }
         return 'ok';
       } catch (e) {
@@ -1403,6 +1607,32 @@ class DatabaseHelper {
     });
   }
 
+  Future<String> updateDbIdTestatePagam(int newApptId) async {
+    Database db = await _currentDatabase();
+
+    return await db.transaction((txn) async {
+      try {
+        await txn.update('PF_APP_ID', {'APPT_ID': newApptId});
+        return 'ok';
+      } catch (e) {
+        return 'err: $e';
+      }
+    });
+  }
+
+  Future<String> updateDbIdRighePagam(int newAppdId) async {
+    Database db = await _currentDatabase();
+
+    return await db.transaction((txn) async {
+      try {
+        await txn.update('PF_APP_ID', {'APPD_ID': newAppdId});
+        return 'ok';
+      } catch (e) {
+        return 'err: $e';
+      }
+    });
+  }
+
   Future<String> updateOcanId(int ocan_id, String ocan_app_id) async {
     Database db = await _currentDatabase();
 
@@ -1526,6 +1756,24 @@ class DatabaseHelper {
     return map[0]["APPT_ID"] + 1;
   }
 
+  Future<List<Map<String, dynamic>>> getPagamentiPerOcanId(int ocanId) async {
+    Database db = await _currentDatabase();
+    return await db.query(
+      'OC_Pagam',
+      where: 'OCPG_OCAN_Id = ?',
+      whereArgs: [ocanId],
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getArticoliPerOcanId(int ocanId) async {
+    Database db = await _currentDatabase();
+    return await db.query(
+      'OC_Artic',
+      where: 'OCAR_OCAN_Id = ?',
+      whereArgs: [ocanId],
+    );
+  }
+
   Future<int?> getOcarAppId() async {
     Database db = await _currentDatabase();
     final List<Map<String, dynamic>> map =
@@ -1533,6 +1781,23 @@ class DatabaseHelper {
     //debugPrint(map[0]["APPR_ID"] + 1);
     return map[0]["APPR_ID"] + 1;
   }
+
+  Future<int?> getPFARAppId() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map =
+        await db.rawQuery("SELECT APPD_ID FROM PF_APP_ID");
+    //debugPrint(map[0]["APPR_ID"] + 1);
+    return map[0]["APPD_ID"] + 1;
+  }
+
+  Future<int?> getPFANAppId() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map =
+        await db.rawQuery("SELECT APPT_ID FROM PF_APP_ID");
+    //debugPrint(map[0]["APPR_ID"] + 1);
+    return map[0]["APPT_ID"] + 1;
+  }
+
   /*BOLLE */
 
   Future<List<Map<String, dynamic>>> getBLTipo() async {
@@ -1727,7 +1992,7 @@ WHERE FTAN_MBPC_ID=$mbpcId AND substr(FTAN_DataIns,1,4)>='${DateTime.now().year 
         await db.rawQuery("""SELECT * FROM MessagesToSend
                               """);
     //debugdebugPrint(map.toString());
-    debugPrint('REcupero Messaggi da Inviare: ${map.toString()}');
+    //debugPrint('REcupero Messaggi da Inviare: ${map.toString()}');
     return map;
   }
 

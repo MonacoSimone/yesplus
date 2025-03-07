@@ -10,8 +10,10 @@ class ParametriController extends GetxController {
   final passwordCT = TextEditingController();
   final serverAPI = TextEditingController(text: 'Server API');
   final serverWSK = TextEditingController(text: 'Server WSK');
+  final imeiTxtCT = TextEditingController(text: 'Codice Univoco');
   FocusNode serverAPINode = FocusNode();
   FocusNode serverWSKNode = FocusNode();
+  FocusNode imeiTxtCTNode = FocusNode();
   RxString agenteValue = ''.obs;
   RxString password = ''.obs;
   RxInt selectedItemIdOC = 0.obs;
@@ -58,6 +60,20 @@ class ParametriController extends GetxController {
         }
       }
     });
+
+    imeiTxtCTNode.addListener(() {
+      // Controlla se il TextField ha ottenuto il focus
+      if (imeiTxtCTNode.hasFocus) {
+        // Se sì, cancella il testo
+        if (imeiTxtCT.text == 'Codice Univoco') {
+          imeiTxtCT.clear();
+        }
+      } else {
+        if (imeiTxtCT.text.isEmpty) {
+          imeiTxtCT.text = 'Codice Univoco';
+        }
+      }
+    });
   }
 
   void selectItem(int id) {
@@ -80,6 +96,7 @@ class ParametriController extends GetxController {
     await getTipiconto();
     serverWSK.text = await DatabaseHelper().getServerWSK();
     serverAPI.text = await DatabaseHelper().getServerAPI();
+    imeiTxtCT.text = await DatabaseHelper().getIMEI();
   }
 
   Future<void> getTipiconto() async {

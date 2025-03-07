@@ -34,6 +34,9 @@ class Prodotto {
   String unMis;
   double prezzo;
   int stato;
+  double sconto1 = 0.0;
+  double sconto2 = 0.0;
+  double sconto3 = 0.0;
 
   Prodotto(
       {required this.id,
@@ -43,7 +46,10 @@ class Prodotto {
       required this.descrizione,
       required this.unMis,
       required this.prezzo,
-      required this.stato});
+      required this.stato,
+      required this.sconto1,
+      required this.sconto2,
+      required this.sconto3});
 
   factory Prodotto.fromJson(Map<String, dynamic> json) => Prodotto(
       id: json["MGAA_ID"],
@@ -53,7 +59,10 @@ class Prodotto {
       unMis: json["MGAA_MBUM_Codice"],
       idIva: json["MGAA_MBIV_ID"] ?? 0,
       prezzo: json["MGAA_PVendita"]?.toDouble() ?? 0.0,
-      stato: json["MGAA_Stato"]);
+      stato: json["MGAA_Stato"],
+      sconto1: json["Sconto1"]?.toDouble() ?? 0.0,
+      sconto2: json["Sconto2"]?.toDouble() ?? 0.0,
+      sconto3: json["Sconto3"]?.toDouble() ?? 0.0);
 
   Map<String, dynamic> toJson() => {
         "MGAA_ID": id,
@@ -63,6 +72,9 @@ class Prodotto {
         "MGAA_MBUM_Codice": unMis,
         "MGAA_PVendita": prezzo,
         "MGAA_Stato": stato,
-        "MGAA_MBIV_ID": idIva
+        "MGAA_MBIV_ID": idIva,
+        "Sconto1": sconto1,
+        "Sconto2": sconto2,
+        "Sconto3": sconto3
       };
 }

@@ -24,6 +24,7 @@ class Partita {
   String capaScadenza;
   String capaDataVal;
   String capaDataDoc;
+  String capaRifFat;
   double capaImportoAvere;
   double capaImportoDare;
   double capaResiduo;
@@ -56,6 +57,7 @@ class Partita {
       required this.capaPagCnt,
       required this.capaPagAss,
       required this.capaPagTit,
+      required this.capaRifFat,
       required this.colore});
 
   factory Partita.fromJson(Map<String, dynamic> json) => Partita(
@@ -79,6 +81,7 @@ class Partita {
       capaPagCnt: json["CAPA_PagCnt"]?.toDouble() ?? 0.0,
       capaPagAss: json["CAPA_PagAss"]?.toDouble() ?? 0.0,
       capaPagTit: json["CAPA_PagTit"]?.toDouble() ?? 0.0,
+      capaRifFat: json["CAPA_RIF_FATT"] ?? '',
       colore: Color.fromARGB(255, 23, 164, 207).obs);
 
   Map<String, dynamic> toJson() => {
@@ -102,5 +105,6 @@ class Partita {
         "CAPA_PagCnt": capaPagCnt,
         "CAPA_PagAss": capaPagAss,
         "CAPA_PagTit": capaPagTit,
+        "CAPA_RIF_FATT": capaRifFat,
       };
 }

@@ -166,6 +166,9 @@ class Ordine extends StatelessWidget {
                         classe: ordineCt.prodotti[index].classe,
                         idIva: ordineCt.prodotti[index].idIva,
                         serverApi: ordineCt.serverApi.value,
+                        sconto1: ordineCt.prodotti[index].sconto1,
+                        sconto2: ordineCt.prodotti[index].sconto2,
+                        sconto3: ordineCt.prodotti[index].sconto3,
                       ),
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
@@ -182,7 +185,7 @@ class Ordine extends StatelessWidget {
               Container(
                   alignment: Alignment.topCenter,
                   width: width * 0.35,
-                  height: context.height - 146,
+                  margin: const EdgeInsets.only(bottom: 146),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10),
@@ -221,10 +224,35 @@ class Ordine extends StatelessWidget {
                           ),
                         ),
                       ),
-                      Expanded(
+                      /* Expanded(
                         child: Obx(
                           () => ListView.builder(
                             shrinkWrap: true,
+                            itemCount: ordineCt.prodottiCarrello.length,
+                            itemBuilder: (BuildContext context, int index) {
+                              return ordineCt.prodottiCarrello.isEmpty
+                                  ? SizedBox(
+                                      width: 200,
+                                      height: 200,
+                                      child: Image.asset(
+                                        'assets/common/images/shopping-cart-empty.jpeg',
+                                        fit: BoxFit.contain,
+                                      ),
+                                    )
+                                  : ListOrderElement(
+                                      ordineCt: ordineCt,
+                                      index: index,
+                                    );
+                            },
+                          ),
+                        ),
+                      ), */
+                      SizedBox(
+                        height: 300, // Assegna un'altezza fissa o dinamica
+                        child: Obx(
+                          () => ListView.builder(
+                            shrinkWrap: true,
+                            physics: const BouncingScrollPhysics(),
                             itemCount: ordineCt.prodottiCarrello.length,
                             itemBuilder: (BuildContext context, int index) {
                               return ordineCt.prodottiCarrello.isEmpty
@@ -401,7 +429,10 @@ class Ordine extends StatelessWidget {
                               children: [
                                 Expanded(
                                   child: InkWell(
-                                    onTap: () {
+                                    onTap: () async {
+                                      await ordineCt.resetDestinatari();
+                                      await ordineCt.loadDestinatari(_clienteCt
+                                          .clienteSelezionato.value.mbanId);
                                       _clienteCt.clienteSelezionato.value
                                                   .mbanId ==
                                               0
@@ -438,6 +469,30 @@ class Ordine extends StatelessWidget {
                                                       ),
                                                       controller: ordineCt
                                                           .noteController, // Aggiungi un controller per il campo di testo
+                                                    ),
+                                                    Gap(40),
+                                                    const Text(
+                                                        'Scegli la Destinazione'),
+                                                    Gap(5),
+                                                    DropdownButtonFormField<
+                                                        String>(
+                                                      value: ordineCt
+                                                          .selectedValue.value,
+                                                      onChanged: (newValue) {
+                                                        if (newValue != null) {
+                                                          ordineCt.selectedValue
+                                                              .value = newValue;
+                                                        }
+                                                      },
+                                                      items: ordineCt
+                                                          .destinatari
+                                                          .map((item) {
+                                                        return DropdownMenuItem<
+                                                            String>(
+                                                          value: item,
+                                                          child: Text(item),
+                                                        );
+                                                      }).toList(),
                                                     ),
                                                     const SizedBox(
                                                         height:

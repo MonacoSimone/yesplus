@@ -20,6 +20,9 @@ class CardProdotto extends StatelessWidget {
     required this.stato,
     required this.idIva,
     required this.serverApi,
+    required this.sconto1,
+    required this.sconto2,
+    required this.sconto3,
   }) : super(key: key);
 
   final desc;
@@ -31,6 +34,9 @@ class CardProdotto extends StatelessWidget {
   final stato;
   final int idIva;
   final String serverApi;
+  final double sconto1;
+  final double sconto2;
+  final double sconto3;
 
   Future<bool> isConnected() async {
     var connectivityResult = await Connectivity().checkConnectivity();
@@ -67,23 +73,23 @@ class CardProdotto extends StatelessWidget {
         await ordineCt.getInfoProdotto(
             id, _clientiCt.clienteSelezionato.value.mbpcId);
         // Recupera le scontistiche predefinite del cliente per il prodotto specifico
-        List<double?> sconti = await DatabaseHelper().getScontiCliente(
+        /* List<double?> sconti = await DatabaseHelper().getScontiCliente(
           _clientiCt.clienteSelezionato.value.mbpcId,
           id, // ID del prodotto
-        );
+        ); */
         bool res = await isConnected();
         debugPrint('result $res');
         if (res) {
           await ordineCt.geDisponibilita(id);
         }
-        debugPrint(sconti.toString());
+        debugPrint(sconto1.toString());
         // Aggiorna i TextField con i valori di sconto se disponibili
         ordineCt.textSc1.text =
-            sconti[0] != null ? sconti[0]!.toStringAsFixed(2) : 'Sconto 1';
+            sconto1 != 0 ? sconto1.toStringAsFixed(2) : 'Sconto 1';
         ordineCt.textSc2.text =
-            sconti[1] != null ? sconti[1]!.toStringAsFixed(2) : 'Sconto 2';
+            sconto2 != 0 ? sconto2.toStringAsFixed(2) : 'Sconto 2';
         ordineCt.textSc3.text =
-            sconti[2] != null ? sconti[2]!.toStringAsFixed(2) : 'Sconto 3';
+            sconto3 != 0 ? sconto3.toStringAsFixed(2) : 'Sconto 3';
 
         // Calcola l'altezza della tastiera
         ordineCt.dialogHeight.value = height * 0.65;
@@ -496,7 +502,10 @@ class CardProdotto extends StatelessWidget {
                                           unMis: uniMis,
                                           prezzo: prezzo,
                                           stato: 1,
-                                          idIva: idIva),
+                                          idIva: idIva,
+                                          sconto1: sconto1,
+                                          sconto2: sconto2,
+                                          sconto3: sconto3),
                                       ordineCt.qtaProdotto);
                                   ordineCt.qtaProdotto.value = 1;
                                   ordineCt.textQta.text = '1.0';

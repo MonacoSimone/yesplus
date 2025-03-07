@@ -266,6 +266,121 @@ class Connessioni extends StatelessWidget {
                       ),
                     ),
                   ),
+                  const Gap(20),
+                  InkWell(
+                    onTap: () async {
+                      //DatabaseHelper().exportDatabase1();
+                      Get.to(() => MessagesPage());
+                    },
+                    child: Container(
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF8AD9F2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      height: 50,
+                      child: const Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: Text(
+                          'Messaggi',
+                          style: TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Gap(20),
+                  InkWell(
+                    onTap: () async {
+                      DatabaseHelper().exportDatabase1();
+                    },
+                    child: Container(
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF8AD9F2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      height: 50,
+                      child: const Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: Text(
+                          'Scarica DB',
+                          style: TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Gap(20),
+                  InkWell(
+                    onTap: () async {
+                      Get.defaultDialog(
+                        title: 'Reinizializzazione',
+                        content: Container(
+                          width: 600,
+                          height: 200,
+                          padding: const EdgeInsets.all(8.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('Scegli tabella da reinizializzare'),
+                              Gap(20),
+                              DropdownButtonFormField<String>(
+                                value: coc.selectedTable.value,
+                                onChanged: (newValue) {
+                                  if (newValue != null) {
+                                    coc.selectedTable.value = newValue;
+                                  }
+                                },
+                                items: coc.tables.map((item) {
+                                  return DropdownMenuItem<String>(
+                                    value: item,
+                                    child: Text(item),
+                                  );
+                                }).toList(),
+                              ),
+                              Gap(30),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      coc.executeAction();
+                                      Get.back();
+                                    },
+                                    child: const Center(child: Text('Esegui')),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Get.back();
+                                    },
+                                    child: const Center(child: Text('Chiudi')),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF8AD9F2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      height: 50,
+                      child: const Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: Text(
+                          'Reinizializza',
+                          style: TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

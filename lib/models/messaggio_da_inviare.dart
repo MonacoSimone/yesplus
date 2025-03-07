@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class Messaggio {
   final int? id;
   final String query;
@@ -17,11 +19,20 @@ class Messaggio {
   }
 
   factory Messaggio.fromMap(Map<String, dynamic> map) {
+    // Ottieni il campo METS_Message, che dovrebbe essere una stringa JSON.
+    final messaggioJson = map['METS_Message'];
+
+    // Decodifica il JSON per ottenere una mappa.
+    final messageMap =
+        messaggioJson is String ? jsonDecode(messaggioJson) : messaggioJson;
+
     return Messaggio(
-      id: map['id'],
-      query: map['query'],
-      table: map['table'],
-      data: Map<String, dynamic>.from(map['data']),
+      id: map['METS_ID'], // Usa la chiave corretta per l'ID
+      query: messageMap['QUERY'] ?? '',
+      table: messageMap['TABLE'] ?? '',
+      data: messageMap['DATA'] != null
+          ? Map<String, dynamic>.from(messageMap['DATA'])
+          : {},
     );
   }
 }

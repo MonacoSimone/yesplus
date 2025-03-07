@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:logger/web.dart';
+import 'package:yesplus/models/destinatari.dart';
 import '../models/zprezzitv.dart';
 import '../models/sconto.dart';
 import '../models/tipoArticolo.dart';
@@ -33,6 +34,190 @@ import 'package:dio/dio.dart' as dio;
 class ConnessioneController extends GetxController {
   //final TextEditingController indirizzoServer = TextEditingController();
   final ScrollController scrollController = ScrollController();
+  final tables = [
+    'Clienti',
+    'Partite',
+    'Ordini',
+    'Fatture',
+    'Bolle 1',
+    'Bolle 2',
+    'Articoli',
+    'PrezziTV',
+    'Destinazioni',
+    'Tipi Ordine',
+    'Tipi Fattura',
+    'Tipi Bolla',
+    'Agenti' /*,
+    'Tipi Iva',
+    ' Tipi Pagamento',
+    'Sol. Pagamento',
+    'Tipi Conto'*/
+  ].obs;
+  final selectedTable = 'Clienti'.obs;
+  Future<void> executeAction() async {
+    // Perform actions with selectedTable.value
+    print('Selected table: ${selectedTable.value}');
+    int idAge = await DatabaseHelper().getIdAgente();
+    int tipoConto = await DatabaseHelper().getIdTipoConto();
+    switch (selectedTable.value) {
+      case 'Clienti':
+        // Code to execute for 'Clienti'
+        stato.add('Cancello Anagrafiche Clienti: '.obs);
+        await DatabaseHelper().clearMB_Anagr();
+        stato.add('Recupero Anagrafiche Clienti: '.obs);
+        await initMB_Anag(idAge, tipoConto);
+        print('Performing action for Clienti');
+        break;
+
+      case 'Destinazioni':
+        stato.add('Cancello Destinazioni Clienti: '.obs);
+        await DatabaseHelper().clearMB_CliForDest();
+        stato.add('Recupero Destinazioni clienti: '.obs);
+        await initMBCliForDest(idAge, tipoConto);
+        break;
+      case 'Partite':
+        // Code to execute for 'Partite'
+        stato.add('Cancello Partite '.obs);
+        await DatabaseHelper().clearCA_Partite();
+
+        stato.add('Recupero Partite: '.obs);
+        await initCA_Partite(idAge, tipoConto);
+        print('Performing action for Partite');
+        break;
+      case 'Ordini':
+        // Code to execute for 'Ordini'
+
+        int ocTipo = await DatabaseHelper().getTipoOrdine();
+        stato.add('Cancello Testate Ordini '.obs);
+        await DatabaseHelper().clearOC_Anag();
+        stato.add('Cancello Righe Ordini '.obs);
+        await DatabaseHelper().clearOC_Artic();
+        stato.add('Cancello Pagamenti Ordini '.obs);
+        await DatabaseHelper().clearOC_Pagam();
+        stato.add('Recupero Testate Ordini: '.obs);
+        await initOC_Anagr(ocTipo, tipoConto);
+        stato.add('Recupero Righe Ordini: '.obs);
+        await initOC_Arti(ocTipo, tipoConto);
+        stato.add('Recupero Pagamenti Ordini: '.obs);
+        await initOCPagam(idAge, tipoConto);
+        print('Performing action for Ordini');
+        break;
+      case 'Fatture':
+        // Code to execute for 'Fatture'
+        int ftTipo = await DatabaseHelper().getTipoFattura();
+        stato.add('Cancello Testate Fatture '.obs);
+        await DatabaseHelper().clearFT_Anagr();
+        stato.add('Cancello Righe Fatture '.obs);
+        await DatabaseHelper().clearFT_Artic();
+        stato.add('Cancello Pagamenti Fatture '.obs);
+        await DatabaseHelper().clearFT_Pagam();
+        stato.add('Recupero Testate Fatture: '.obs);
+        await initFT_Anagr(idAge, tipoConto);
+        stato.add('Recupero Righe Fatture: '.obs);
+        await initFT_Artic(idAge, tipoConto);
+        stato.add('Recupero Pagamenti Fatture: '.obs);
+        await initFTPagam(idAge, tipoConto);
+        print('Performing action for Fatture');
+        break;
+      case 'Bolle':
+        // Code to execute for 'Bolle 1'
+        int blTipo1 = await DatabaseHelper().getTipoBolla1();
+        stato.add('Cancello Testate Bolle '.obs);
+        await DatabaseHelper().clearBL_Anag();
+        stato.add('Cancello Righe Bolle '.obs);
+        await DatabaseHelper().clearBL_Artic();
+        stato.add('Cancello Pagamenti Bolle '.obs);
+        await DatabaseHelper().clearBL_Pagam();
+        stato.add('Recupero Testate Bolle Tipo 1: '.obs);
+        await initBL_Anagr(blTipo1, tipoConto);
+        stato.add('Recupero Righe Bolle Tipo 1: '.obs);
+        await initBL_Artic(blTipo1, tipoConto);
+        stato.add('Recupero Pagamenti Bolle Tipo 1: '.obs);
+        await initBLPagam(idAge, tipoConto);
+        print('Performing action for Bolle 1');
+        // Code to execute for 'Bolle 2'
+        int blTipo2 = await DatabaseHelper().getTipoBolla2();
+        stato.add('Recupero Testate Bolle Tipo 2: '.obs);
+        await initBL_Anagr(blTipo2, tipoConto);
+        stato.add('Recupero Righe Bolle Tipo 2: '.obs);
+        await initBL_Artic(blTipo2, tipoConto);
+        stato.add('Recupero Pagamenti Bolle Tipo 2: '.obs);
+        await initBLPagam(idAge, tipoConto);
+        print('Performing action for Bolle 2');
+        break;
+      case 'Articoli':
+        // Code to execute for 'Articoli'
+        stato.add('Cancello Articoli '.obs);
+        await DatabaseHelper().clearMG_Artic();
+        stato.add('Recupero Anagrafiche Articoli: '.obs);
+        await initMG_AnaArt();
+        print('Performing action for Articoli');
+        break;
+      case 'PrezziTV':
+        // Code to execute for 'PrezziTV'
+        stato.add('Cancello PrezziTV '.obs);
+        await DatabaseHelper().clearZprezziTv();
+        stato.add('Recuperto Prezzi Articoli'.obs);
+        await initZprezziTv();
+        print('Performing action for PrezziTV');
+        break;
+      case 'Tipi Ordine':
+        // Code to execute for 'Tipi Ordine'
+        await DatabaseHelper().clearOC_Tipo();
+        stato.add('Recupero Tipi Ordine: '.obs);
+        await initOC_Tipo();
+        print('Performing action for Tipi Ordine');
+        break;
+      case 'Tipi Fattura':
+        // Code to execute for 'Tipi Fattura'
+        await DatabaseHelper().clearFT_Tipo();
+        stato.add('Recupero Tipi Fattura: '.obs);
+        await initFT_Tipo();
+        print('Performing action for Tipi Fattura');
+        break;
+      case 'Tipi Bolla':
+        // Code to execute for 'Tipi Bolla'
+        await DatabaseHelper().clearFT_Tipo();
+        stato.add('Recupero Tipi Bolla: '.obs);
+        await initBL_Tipo();
+        print('Performing action for Tipi Bolla');
+        break;
+      case 'Agenti':
+        // Code to execute for 'Agenti'
+        await DatabaseHelper().clearAgenti();
+        stato.add('Recupero Agenti: '.obs);
+        await initMBage();
+        print('Performing action for Agenti');
+        break;
+      case 'Tipi Iva':
+        // Code to execute for 'Tipi Iva'
+        stato.add('Recupero Tipi Iva'.obs);
+        await initMBiva();
+        print('Performing action for Tipi Iva');
+        break;
+      case 'Tipi Pagamento':
+        // Code to execute for 'Tipi Pagamento'
+        stato.add('Recupero Tipi Pagemnto'.obs);
+        await initMBTipoPag();
+        print('Performing action for Tipi Pagamento');
+        break;
+      case 'Sol. Pagamento':
+        // Code to execute for 'Sol. Pagamento'
+        stato.add('Recupero Soluzioni Pagamento'.obs);
+        await initMBSolPag();
+        print('Performing action for Sol. Pagamento');
+        break;
+      case 'Tipi Conto':
+        stato.add('Recupero Tipi Conto'.obs);
+        await initTipoConto();
+        // Code to execute for 'Tipi Conto'
+        print('Performing action for Tipi Conto');
+        break;
+      default:
+        print('Invalid table name');
+    }
+  }
+
   var logger = Logger();
   RxString indirizzo = ''.obs;
   RxString status = ''.obs;
@@ -62,6 +247,7 @@ class ConnessioneController extends GetxController {
   RxString numFTPG = ''.obs;
   RxString numMBTC = ''.obs;
   RxString numMBTA = ''.obs;
+  RxString numCFDT = ''.obs;
   RxString numSconti = ''.obs;
   RxString numprezzi = ''.obs;
 
@@ -86,6 +272,7 @@ class ConnessioneController extends GetxController {
   RxInt contFTPG = 1.obs;
   RxInt contMBTC = 1.obs;
   RxInt contMBTA = 1.obs;
+  RxInt contCFDT = 1.obs;
   RxInt contSconti = 1.obs;
   RxInt contZprezzi = 1.obs;
   RxString connesione = 'Connetti'.obs;
@@ -137,11 +324,11 @@ class ConnessioneController extends GetxController {
   } */
 
   Future<void> connectToServer() async {
-    final DeviceInfoPlugin deviceInfoPlugin = DeviceInfoPlugin();
-    AndroidDeviceInfo _deviceData;
+    //final DeviceInfoPlugin deviceInfoPlugin = DeviceInfoPlugin();
+    //AndroidDeviceInfo _deviceData;
     stato.add(controlloPermessi);
     String imei;
-    var permission = await Permission.phone.status;
+    //var permission = await Permission.phone.status;
 
     /* socket = socket_io.io(indirizzoServer.value.text, <String, dynamic>{
       'transports': ['websocket'],
@@ -150,7 +337,8 @@ class ConnessioneController extends GetxController {
     imei = await DatabaseHelper().getIMEI();
     stato.add('Imei: $imei'.obs);
     if (imei.isEmpty) {
-      debugPrint('Permesso per l\'accesso al telefono: $permission');
+      stato.add('Codice Univoco non trovato'.obs);
+      /* debugPrint('Permesso per l\'accesso al telefono: $permission');
       if (permission.isGranted) {
         _deviceData = await deviceInfoPlugin.androidInfo;
         imei = _deviceData.id; //await DeviceInformation.deviceIMEINumber;;
@@ -172,16 +360,17 @@ class ConnessioneController extends GetxController {
           controlloPermessi.value =
               "${controlloPermessi.value} Non ci sono i permessi necessari.";
         }
+      } */
+    } else {
+      stato.add(statoConnessione);
+      //socket.connect();
+      try {
+        await wsc.connectToWebSocket();
+        stato.add('Connesso'.obs);
+        update();
+      } catch (e) {
+        statoConnessione.value = '${statoConnessione.value}$e';
       }
-    }
-    stato.add(statoConnessione);
-    //socket.connect();
-    try {
-      await wsc.connectToWebSocket();
-      stato.add('Connesso'.obs);
-      update();
-    } catch (e) {
-      statoConnessione.value = '${statoConnessione.value}$e';
     }
 
     /*  wsc.socket!.on('initDB', (_) async {
@@ -262,6 +451,83 @@ class ConnessioneController extends GetxController {
         }
       }
       debugPrint('Elaborazione completata MBAN');
+    } catch (e) {
+      debugPrint('Errore durante la richiesta: $e');
+    }
+  }
+
+  /*DESTINAZIONE ANAGRAFICHE */
+
+  Future<void> getNumMbCliForDest(int mbagid, int tipoConto) async {
+    numCFDT = '0'.obs;
+    var dioClient = dio.Dio();
+    final response = await dioClient.get(
+        '${ipAddressApi.value}/infoInitDb/nummbclifordest/$tipoConto/$mbagid');
+    numCFDT = jsonDecode(response.toString())['tot'].toString().obs;
+  }
+
+  Future<void> initMBCliForDest(int mbagid, int tipoConto) async {
+    contCFDT = 0.obs;
+    List<MbCliForDest> batch = [];
+    var dioClient = dio.Dio();
+    var url =
+        '${ipAddressApi.value}/initdbclient/mbclifordest/$tipoConto/$mbagid';
+    print(url);
+    try {
+      dio.Response<dio.ResponseBody> response =
+          await dioClient.get<dio.ResponseBody>(
+        url,
+        options: dio.Options(
+          responseType: dio.ResponseType.stream,
+        ),
+      );
+
+      Stream<String> stream = response.data!.stream
+          .transform(StreamTransformer<Uint8List, String>.fromBind((stream) =>
+              stream.map((list) => utf8.decode(list, allowMalformed: true))))
+          .transform(const LineSplitter());
+
+      await getNumMbCliForDest(mbagid, tipoConto);
+
+      stato.add('${contCFDT.value} di ${numCFDT.value}'.obs);
+
+      await for (String line in stream) {
+        if (line.isNotEmpty) {
+          try {
+            var jsonData = json.decode(line);
+            var dest = MbCliForDest.fromJson(jsonData);
+            batch.add(dest);
+            if (batch.length >= batchSize) {
+              String controllo =
+                  await DatabaseHelper().initDbMBCliForDestBatch(batch);
+              contCFDT.value = contCFDT.value + batch.length;
+              batch.clear();
+              if (controllo == 'ok') {
+                stato[stato.length - 1] =
+                    '${contCFDT.value} di ${numCFDT.value}'.obs;
+              } else {
+                stato[stato.length - 1] = controllo.obs;
+              }
+            }
+            // Fai qualcosa con l'oggetto Cliente
+          } catch (e) {
+            debugPrint('Errore di parsing JSON: $e');
+            // Gestisci l'errore di parsing
+          }
+        }
+      }
+      if (batch.isNotEmpty) {
+        String controllo =
+            await DatabaseHelper().initDbMBCliForDestBatch(batch);
+        contCFDT.value = contCFDT.value + batch.length;
+        batch.clear(); // Svuota il batch dopo l'inserimento
+        if (controllo == 'ok') {
+          stato[stato.length - 1] = '${contCFDT.value} di ${numCFDT.value}'.obs;
+        } else {
+          stato[stato.length - 1] = controllo.obs;
+        }
+      }
+      debugPrint('Elaborazione completata MBDT');
     } catch (e) {
       debugPrint('Errore durante la richiesta: $e');
     }
@@ -1937,6 +2203,9 @@ class ConnessioneController extends GetxController {
     try {
       stato.add('Recupero Anagrafiche Clienti: '.obs);
       await initMB_Anag(idAge, tipoConto);
+
+      stato.add('Recupero Destinazioni Clienti'.obs);
+      await initMBCliForDest(idAge, tipoConto);
 
       stato.add('Recupero Sconti Clienti'.obs);
       await initSconti(idAge, tipoConto);

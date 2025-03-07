@@ -92,6 +92,9 @@ class IncassiController extends GetxController {
   }
 
   Future<int> paga(int MBPC_ID, WebSocketController wc) async {
+    String imei = await DatabaseHelper().getIMEI();
+    int? pfanAppId;
+
     int MBAG_ID = await DatabaseHelper().getMBAGID();
     double contanti = double.parse(this.contanti.value);
     double assegni = double.parse(this.assegni.value);
@@ -101,6 +104,7 @@ class IncassiController extends GetxController {
     Map<String, dynamic> head = {};
 
     if (contanti > 0) {
+      pfanAppId = (await DatabaseHelper().getPFANAppId())!;
       importo = 0.0;
       head = {
         "QUERY": "INSERT",
@@ -113,14 +117,16 @@ class IncassiController extends GetxController {
           "PFAN_DataEmiss": '@DATAEMISS',
           "PFAN_AnnoPag": '@ANNOPAG',
           "PFAN_NumPag": "@NUMPAG",
-          "PFAN_MBPC_ID": MBPC_ID,
+          "PFAN_MBPC_ID": 8951,
           "PFAN_NoteIniziali": "@CONTANTI",
-          "PFAN_MBAG_Id": MBAG_ID
+          "PFAN_MBAG_Id": MBAG_ID,
+          "PFAN_APP_ID": "$imei-$pfanAppId"
         }
       };
       list.add(head);
 
       for (Partita riga in partiteSelezionate) {
+        int? pfarAppId = (await DatabaseHelper().getPFARAppId())!;
         if (riga.capaResiduo >= contanti) {
           importo = contanti;
           riga.capaResiduo = riga.capaResiduo - contanti;
@@ -158,13 +164,25 @@ class IncassiController extends GetxController {
                 riga.capaScadenza.substring(0, capaScadenza.length),
             "PFDT_DataDoc": riga.capaDataDoc.substring(0, capaDataDoc.length),
             "PFDT_NumDoc": riga.capaNumDoc,
-            "PFDT_MBTD_ID": riga.capaMbtdId
+            "PFDT_MBTD_ID": riga.capaMbtdId,
+            "PFDT_APP_ID": "$imei-$pfarAppId"
           }
         });
+        try {
+          await DatabaseHelper().updateDbIdRighePagam(pfarAppId);
+        } catch (e) {
+          debugPrint(jsonEncode(e));
+        }
+      }
+      try {
+        await DatabaseHelper().updateDbIdTestatePagam(pfanAppId);
+      } catch (e) {
+        debugPrint(jsonEncode(e));
       }
     }
 
     if (assegni > 0) {
+      pfanAppId = (await DatabaseHelper().getPFANAppId())!;
       importo = 0.0;
       Map<String, dynamic> head = {
         "QUERY": "INSERT",
@@ -176,14 +194,16 @@ class IncassiController extends GetxController {
           "PFAN_DataEmiss": '@DATAEMISS',
           "PFAN_AnnoPag": '@ANNOPAG',
           "PFAN_NumPag": "@NUMPAG",
-          "PFAN_MBPC_ID": MBPC_ID,
+          "PFAN_MBPC_ID": 8951,
           "PFAN_NoteIniziali": "@ASSEGNI",
-          "PFAN_MBAG_Id": MBAG_ID
+          "PFAN_MBAG_Id": MBAG_ID,
+          "PFAN_APP_ID": "$imei-$pfanAppId"
         }
       };
       list.add(head);
 
       for (Partita riga in partiteSelezionate) {
+        int? pfarAppId = (await DatabaseHelper().getPFARAppId())!;
         if (riga.capaResiduo >= assegni) {
           importo = assegni;
           riga.capaResiduo = riga.capaResiduo - importo;
@@ -221,13 +241,25 @@ class IncassiController extends GetxController {
                 riga.capaScadenza.substring(0, capaScadenza.length),
             "PFDT_DataDoc": riga.capaDataDoc.substring(0, capaDataDoc.length),
             "PFDT_NumDoc": riga.capaNumDoc,
-            "PFDT_MBTD_ID": riga.capaMbtdId
+            "PFDT_MBTD_ID": riga.capaMbtdId,
+            "PFDT_APP_ID": "$imei-$pfarAppId"
           }
         });
+        try {
+          await DatabaseHelper().updateDbIdRighePagam(pfarAppId);
+        } catch (e) {
+          debugPrint(jsonEncode(e));
+        }
+      }
+      try {
+        await DatabaseHelper().updateDbIdTestatePagam(pfanAppId);
+      } catch (e) {
+        debugPrint(jsonEncode(e));
       }
     }
 
     if (titoli > 0) {
+      pfanAppId = (await DatabaseHelper().getPFANAppId())!;
       importo = 0.0;
       Map<String, dynamic> head = {
         "QUERY": "INSERT",
@@ -239,14 +271,16 @@ class IncassiController extends GetxController {
           "PFAN_DataEmiss": '@DATAEMISS',
           "PFAN_AnnoPag": '@ANNOPAG',
           "PFAN_NumPag": "@NUMPAG",
-          "PFAN_MBPC_ID": MBPC_ID,
+          "PFAN_MBPC_ID": 8951,
           "PFAN_NoteIniziali": "@TITOLI",
-          "PFAN_MBAG_Id": MBAG_ID
+          "PFAN_MBAG_Id": MBAG_ID,
+          "PFAN_APP_ID": "$imei-$pfanAppId"
         }
       };
       list.add(head);
 
       for (Partita riga in partiteSelezionate) {
+        int? pfarAppId = (await DatabaseHelper().getPFARAppId())!;
         if (riga.capaResiduo >= titoli) {
           importo = titoli;
           riga.capaResiduo = riga.capaResiduo - titoli;
@@ -284,9 +318,20 @@ class IncassiController extends GetxController {
                 riga.capaScadenza.substring(0, capaScadenza.length),
             "PFDT_DataDoc": riga.capaDataDoc.substring(0, capaDataDoc.length),
             "PFDT_NumDoc": riga.capaNumDoc,
-            "PFDT_MBTD_ID": riga.capaMbtdId
+            "PFDT_MBTD_ID": riga.capaMbtdId,
+            "PFDT_APP_ID": "$imei-$pfarAppId"
           }
         });
+        try {
+          await DatabaseHelper().updateDbIdRighePagam(pfarAppId);
+        } catch (e) {
+          debugPrint(jsonEncode(e));
+        }
+      }
+      try {
+        await DatabaseHelper().updateDbIdTestatePagam(pfanAppId);
+      } catch (e) {
+        debugPrint(jsonEncode(e));
       }
     }
 
@@ -295,17 +340,16 @@ class IncassiController extends GetxController {
 
       for (var ele in list) {
         if (ele['TABLE'] == 'PF_Anag') {
-          PFAN_ID = await wc.sendMessage(Messaggio(
-              metsId: -1,
-              metsMessage: jsonEncode(ele),
-              metsDataSave: 'diretto'));
+          PFAN_ID = await wc.sendMessage(
+              Messaggio(metsMessage: jsonEncode(ele), metsDataSave: 'diretto'));
+          if (PFAN_ID == -1) {
+            PFAN_ID = pfanAppId!;
+          }
         } else {
           ele["DATA"]["PFDT_PFAN_ID"] = PFAN_ID;
           if (ele["DATA"]["PFDT_ImportoAvere"] != 0) {
             await wc.sendMessage(Messaggio(
-                metsId: -1,
-                metsMessage: jsonEncode(ele),
-                metsDataSave: 'diretto'));
+                metsMessage: jsonEncode(ele), metsDataSave: 'diretto'));
           }
         }
       }
@@ -324,7 +368,11 @@ class IncassiController extends GetxController {
 
     scadenziario = await DatabaseHelper().getPartite(mbpc_id);
     for (var scadenza in scadenziario) {
-      totale_residuo.value += scadenza.capaResiduo;
+      if (scadenza.capaImportoAvere == 0.0) {
+        totale_residuo.value += scadenza.capaResiduo;
+      } else {
+        totale_residuo.value -= scadenza.capaResiduo;
+      }
     }
   }
 

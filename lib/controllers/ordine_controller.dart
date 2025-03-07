@@ -51,6 +51,26 @@ class OrdineController extends GetxController {
   RxList<DataRow> righeStorico = <DataRow>[].obs;
   RxString serverApi = ''.obs;
   RxString disponibilita = ''.obs;
+  RxString selectedValue = ''.obs;
+  RxList<String> destinatari = <String>[].obs;
+
+  Future<void> loadDestinatari(int mbanid) async {
+    debugPrint('carico destinatari');
+    // destinatari = <String>[].obs;
+    // selectedValue = ''.obs;
+    final data = await DatabaseHelper().getDestinatariByMBANId(mbanid);
+    print(mbanid);
+    destinatari.value = data;
+    if (destinatari.isNotEmpty) {
+      selectedValue.value =
+          destinatari.first; // Imposta il primo valore come predefinito
+    }
+  }
+
+  Future<void> resetDestinatari() async {
+    destinatari.clear();
+    selectedValue.value = '';
+  }
 
   void resetOrdine() {
     totale = 0.00.obs;
@@ -62,6 +82,7 @@ class OrdineController extends GetxController {
     righeStorico.clear();
     omaggio = false.obs;
     acquistati = false.obs;
+    selectedValue = ''.obs;
   }
 
   Future<void> getServerApi() async {
@@ -357,8 +378,8 @@ class OrdineController extends GetxController {
       ocanEvaso: 0,
       ocanParzEvaso: 0,
       ocanEvasoForz: 0,
-      ocanDestinat: indirizzo,
-      ocanDestinaZ: indirizzo,
+      ocanDestinat: selectedValue.value,
+      ocanDestinaZ: selectedValue.value,
       ocanTotOrdine: totale,
       ocanDestMbanId: mban_id,
       ocanDeszMbanId: mban_id,
@@ -387,8 +408,8 @@ class OrdineController extends GetxController {
         "OCAN_EvasoForz": 0,
         "OCAN_MBDI_ID": 59,
         "OCAN_MBLN_ID": 13,
-        "OCAN_Destinat": indirizzo,
-        "OCAN_Destinaz": indirizzo,
+        "OCAN_Destinat": selectedValue.value,
+        "OCAN_Destinaz": selectedValue.value,
         "OCAN_TotOrdine": totale,
         "OCAN_Dest_MBAN_Id": mban_id,
         "OCAN_Desz_MBAN_Id": mban_id,
@@ -416,7 +437,7 @@ class OrdineController extends GetxController {
         ocarPrezzoListino: prodotto.prezzoListino,
         ocarDqta: prodotto.quantita.value,
         ocarEForz: 0,
-        ocarMbtaCodice: 1,
+        ocarMbtaCodice: prodotto.prezzo == 0 ? 5 : 1,
         ocarAppID: '$imei-$ocarAppId',
       );
       righe.add(riga);
@@ -438,7 +459,7 @@ class OrdineController extends GetxController {
           "OCAR_MBIV_ID": prodotto.idIva,
           "OCAR_DQTA": prodotto.quantita.value,
           "OCAR_EForz": 0,
-          "OCAR_MBTA_Codice": 1,
+          "OCAR_MBTA_Codice": prodotto.prezzo == 0 ? 5 : 1,
           "OCAR_APP_ID": "$imei-$ocarAppId"
         }
       });

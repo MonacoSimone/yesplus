@@ -164,7 +164,7 @@ class Incassi extends StatelessWidget {
                                     },
                                     cells: <DataCell>[
                                       DataCell(Text(ic
-                                          .scadenziario[index].capaNumDoc
+                                          .scadenziario[index].capaRifFat
                                           .toString())),
                                       DataCell(Text(ic
                                           .scadenziario[index].capaAnnoDoc

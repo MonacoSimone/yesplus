@@ -121,6 +121,8 @@ class RicercaClienti extends StatelessWidget {
                                               .clienteSelezionato.value.mbpcId)
                                           .then((value) {
                                         for (var prodotto in value) {
+                                          debugPrint(
+                                              prodotto.toJson().toString());
                                           oc.prodotti.add(prodotto);
                                           oc.prodottiOri.add(prodotto);
 

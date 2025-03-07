@@ -119,6 +119,36 @@ class Parametri extends StatelessWidget {
                           },
                         ),
                       ),
+                      const Gap(10),
+                      Container(
+                        height: 62,
+                        width: 300,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: TextField(
+                          controller: pc.imeiTxtCT,
+                          onChanged: (newvalue) {
+                            pc.imeiTxtCT.text = newvalue;
+                          },
+                          focusNode: pc.imeiTxtCTNode,
+                          textAlign: TextAlign.left,
+                          textAlignVertical: TextAlignVertical.center,
+                          style: const TextStyle(fontSize: 16),
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(
+                              // Rimuove solo il bordo sottostante mantenendo il bordo arrotondato
+                              borderRadius: BorderRadius.circular(
+                                  5), // Personalizza il raggio del bordo arrotondato se necessario
+                            ),
+                          ),
+                          autocorrect: false,
+                          onTapOutside: (pointerDownEvent) {
+                            FocusManager.instance.primaryFocus?.unfocus();
+                          },
+                        ),
+                      ),
                       const Gap(20),
                       ElevatedButton(
                         onPressed: () async {
@@ -127,6 +157,7 @@ class Parametri extends StatelessWidget {
                                 .saveServerAPI(pc.serverAPI.text);
                             await DatabaseHelper()
                                 .saveServerWSK(pc.serverWSK.text);
+                            await DatabaseHelper().saveIMEI(pc.imeiTxtCT.text);
                             Get.snackbar('Esito', 'Salvataggio Riuscito',
                                 colorText: Colors.white,
                                 backgroundColor: Colors.green,
