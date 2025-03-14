@@ -339,7 +339,6 @@ class OrdineController extends GetxController {
     String indirizzo = await DatabaseHelper().getIndirizzo(mban_id);
     int mbsc_id = await DatabaseHelper().getMBSCID();
     int mbdv_id = await DatabaseHelper().getMBDVID();
-
     List<Map<String, dynamic>> list = [];
     Map<String, dynamic> head = {};
     List<RigaOrdine> righe = <RigaOrdine>[];
@@ -408,8 +407,10 @@ class OrdineController extends GetxController {
         "OCAN_EvasoForz": 0,
         "OCAN_MBDI_ID": 59,
         "OCAN_MBLN_ID": 13,
-        "OCAN_Destinat": selectedValue.value,
-        "OCAN_Destinaz": selectedValue.value,
+        "OCAN_Destinat":
+            selectedValue.value.isEmpty ? null : selectedValue.value,
+        "OCAN_Destinaz":
+            selectedValue.value.isEmpty ? null : selectedValue.value,
         "OCAN_TotOrdine": totale,
         "OCAN_Dest_MBAN_Id": mban_id,
         "OCAN_Desz_MBAN_Id": mban_id,

@@ -37,7 +37,7 @@ class Connessioni extends StatelessWidget {
                       color: Colors.red,
                     ),
             ),
-          )
+          ),
         ],
       ),
       body: Padding(
