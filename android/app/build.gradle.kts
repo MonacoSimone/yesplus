@@ -6,7 +6,7 @@ plugins {
 
 android {
     ndkVersion = "27.0.12077973"
-    namespace = "com.monacosimone.yesplus.yesplus"
+    namespace = "com.monacosimone.yesplus"
     compileSdk = flutter.compileSdkVersion
 
     compileOptions {
@@ -25,7 +25,7 @@ android {
             applicationIdSuffix = ".standard"
             versionNameSuffix = "-standard"
             applicationId = "com.monacosimone.yesplus"
-            versionName = "1.0.0"
+            versionName = "1.0.3"
             resValue("string", "app_name", "YesPlus")
             /* ndk {
                 abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
@@ -36,7 +36,7 @@ android {
             applicationIdSuffix = ".gelomare"
             versionNameSuffix = "-gelomare"
             applicationId = "com.monacosimone.yesplus"
-            versionName = "1.0.0"
+            versionName = "1.0.3"
             resValue("string", "app_name", "Yes+ Gelomare")
             /* ndk {
                 abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
@@ -47,7 +47,7 @@ android {
             applicationIdSuffix = ".mcfood"
             versionNameSuffix = "-mcfood"
             applicationId = "com.monacosimone.yesplus"
-            versionName = "1.0.0"
+            versionName = "1.0.3"
             resValue("string", "app_name", "Yes+ McFood")
             /* ndk {
                 abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
@@ -56,7 +56,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.monacosimone.yesplus.yesplus"
+        applicationId = "com.monacosimone.yesplus"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -65,7 +65,9 @@ android {
 
     splits {
         abi {
-            isEnable = false // Disabilita la suddivisione per ABI
+            //sEnable = false // Disabilita la suddivisione per ABI
+            isEnable = true // Abilita la suddivisione per ABI
+            isUniversalApk = true // Genera un APK universale
         }
     }
     
@@ -86,7 +88,9 @@ android {
 
     buildTypes {
         getByName("release") {
-            isDebuggable = true // Use isDebuggable instead of debuggable
+            isDebuggable = false // Use isDebuggable instead of debuggable
+            isMinifyEnabled = false // Disabilita l'offuscamento
+            isShrinkResources = false // Disabilita la riduzione delle risorse
             signingConfig = signingConfigs.getByName("release")
         }
     }

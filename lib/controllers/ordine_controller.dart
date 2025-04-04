@@ -212,7 +212,10 @@ class OrdineController extends GetxController {
         iva: iva,
         idIva: prod.idIva,
         sconti: prod.prezzo - prezzoScontato,
-        UM: prod.unMis));
+        UM: prod.unMis,
+        sconto1: textSc1.text == 'Sconto 1' ? 0 : double.parse(textSc1.text),
+        sconto2: textSc2.text == 'Sconto 2' ? 0 : double.parse(textSc2.text),
+        sconto3: textSc3.text == 'Sconto 3' ? 0 : double.parse(textSc3.text)));
 
     subTotale.value += omaggio.value ? 0 : (prezzoScontato * qtaProdotto.value);
     tasse.value +=
@@ -408,9 +411,9 @@ class OrdineController extends GetxController {
         "OCAN_MBDI_ID": 59,
         "OCAN_MBLN_ID": 13,
         "OCAN_Destinat":
-            selectedValue.value.isEmpty ? null : selectedValue.value,
+            selectedValue.value.trim().isEmpty ? null : selectedValue.value,
         "OCAN_Destinaz":
-            selectedValue.value.isEmpty ? null : selectedValue.value,
+            selectedValue.value.trim().isEmpty ? null : selectedValue.value,
         "OCAN_TotOrdine": totale,
         "OCAN_Dest_MBAN_Id": mban_id,
         "OCAN_Desz_MBAN_Id": mban_id,
@@ -440,6 +443,44 @@ class OrdineController extends GetxController {
         ocarEForz: 0,
         ocarMbtaCodice: prodotto.prezzo == 0 ? 5 : 1,
         ocarAppID: '$imei-$ocarAppId',
+        sconti: [
+          if (prodotto.sconto1 != 0)
+            ScontoRiga(
+              ocPrior: 1,
+              ocscMbstId: 23,
+              ocscPercVal: 0,
+              ocscBaseAppl: 1,
+              ocscValore: prodotto.sconto1!,
+              ocscFinale: 0,
+              ocscTipo: 1,
+              ocscFactor: 1,
+              ocscForCfg: 0,
+            ),
+          if (prodotto.sconto2 != 0)
+            ScontoRiga(
+              ocPrior: 2,
+              ocscMbstId: 25,
+              ocscPercVal: 0,
+              ocscBaseAppl: 0,
+              ocscValore: prodotto.sconto2!,
+              ocscFinale: 0,
+              ocscTipo: 2,
+              ocscFactor: 1,
+              ocscForCfg: 0,
+            ),
+          if (prodotto.sconto3 != 0)
+            ScontoRiga(
+              ocPrior: 3,
+              ocscMbstId: 26,
+              ocscPercVal: 0,
+              ocscBaseAppl: 0,
+              ocscValore: prodotto.sconto3!,
+              ocscFinale: 0,
+              ocscTipo: 3,
+              ocscFactor: 1,
+              ocscForCfg: 0,
+            ),
+        ],
       );
       righe.add(riga);
 
@@ -497,6 +538,59 @@ class OrdineController extends GetxController {
       int OCAN_ID = 0;
 
       for (var ele in list) {
+        debugPrint("TABLE VALUE: '${ele['TABLE']}'");
+
+        if (ele['TABLE'] == 'OC_Anag') {
+          debugPrint('sto dentro l\'inserimento della testata');
+          OCAN_ID = await wc.sendMessage(
+              Messaggio(metsMessage: jsonEncode(ele), metsDataSave: 'diretto'));
+          if (OCAN_ID == -1) {
+            OCAN_ID = ocanAppId;
+          }
+          debugPrint('OCAN_ID: $OCAN_ID');
+        } else if (ele['TABLE'] == 'OC_Artic') {
+          ele["DATA"]["OCAR_OCAN_Id"] = OCAN_ID;
+          int ocarId = await wc.sendMessage(
+              Messaggio(metsMessage: jsonEncode(ele), metsDataSave: 'diretto'));
+
+          // Genera e invia gli sconti per questa riga
+
+          List<ScontoRiga> sconti = righe.firstWhere((r) {
+            String ocarAppId = ele["DATA"]["OCAR_APP_ID"].toString();
+            String idDaConfrontare = ocarAppId.split('-').last;
+
+            return r.ocarId.toString() == idDaConfrontare;
+          } //Aggiunto orElse per evitare l'errore "No element"
+              ).sconti;
+
+          for (int i = 0; i < sconti.length; i++) {
+            Map<String, dynamic> scontoJson = {
+              "QUERY": "INSERT",
+              "TABLE": "OC_Sconti",
+              "DATA": {
+                "OCSC_OCAR_ID": ocarId,
+                "OCSC_Prior": sconti[i].ocPrior,
+                "OCSC_MBST_ID": sconti[i].ocscMbstId,
+                "OCSC_percVal": sconti[i].ocscPercVal,
+                "OCSC_BaseAppl": sconti[i].ocscBaseAppl,
+                "OCSC_Valore": sconti[i].ocscValore,
+                "OCSC_Finale": sconti[i].ocscFinale,
+                "OCSC_Tipo": sconti[i].ocscTipo,
+                "OCSC_Factor": sconti[i].ocscFactor,
+                "OCSC_ForCfg": sconti[i].ocscForCfg,
+              }
+            };
+
+            await wc.sendMessage(Messaggio(
+                metsMessage: jsonEncode(scontoJson), metsDataSave: 'diretto'));
+          }
+        } else {
+          ele["DATA"]["OCPG_OCAN_Id"] = OCAN_ID;
+          await wc.sendMessage(
+              Messaggio(metsMessage: jsonEncode(ele), metsDataSave: 'diretto'));
+        }
+      }
+      /*  for (var ele in list) {
         debugPrint(
             "TABLE VALUE: '${ele['TABLE']}'"); // Stampa il valore preciso
 
@@ -517,7 +611,7 @@ class OrdineController extends GetxController {
           await wc.sendMessage(
               Messaggio(metsMessage: jsonEncode(ele), metsDataSave: 'diretto'));
         }
-      }
+      } */
       testata.ocanId = OCAN_ID;
       await DatabaseHelper().insertTestataOrdine(testata);
 
@@ -530,7 +624,13 @@ class OrdineController extends GetxController {
       Get.snackbar('Inserimento Ordine', 'Ordine Salvato con successo');
       return 1;
     } catch (e) {
-      debugPrint(jsonEncode(e));
+      debugPrint('Errore: ${e.toString()}');
+      Get.snackbar('Errore',
+          'Errore durante il salvataggio dell\'ordine ${e.toString()}');
+      // Gestisci l'errore come preferisci
+      // Ad esempio, puoi mostrare un messaggio di errore all'utente
+      // oppure registrare l'errore in un file di log
+      // In questo caso, restituiamo -1 per indicare un errore
       return -1;
     }
   }

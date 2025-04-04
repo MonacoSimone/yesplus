@@ -55,6 +55,9 @@ class ProdottoCarrello {
   int iva;
   int idIva;
   String UM;
+  double? sconto1;
+  double? sconto2;
+  double? sconto3;
 
   ProdottoCarrello(
       {required this.idProdotto,
@@ -66,7 +69,10 @@ class ProdottoCarrello {
       required this.idIva,
       required this.sconti,
       required this.prezzoListino,
-      required this.UM});
+      required this.UM,
+      this.sconto1,
+      this.sconto2,
+      this.sconto3});
 
   factory ProdottoCarrello.fromJson(Map<String, dynamic> json) =>
       ProdottoCarrello(
@@ -80,6 +86,9 @@ class ProdottoCarrello {
         sconti: json["sconti"],
         prezzoListino: json["prezzoListino"]?.toDouble(),
         UM: json["UM"],
+        sconto1: json["sconto1"]?.toDouble(),
+        sconto2: json["sconto2"]?.toDouble(),
+        sconto3: json["sconto3"]?.toDouble(),
       );
 
   Map<String, dynamic> toJson() => {
@@ -92,5 +101,8 @@ class ProdottoCarrello {
         "idIva": idIva,
         "prezzoListino": prezzoListino,
         "UM": UM,
+        "sconto1": sconto1,
+        "sconto2": sconto2,
+        "sconto3": sconto3,
       };
 }
