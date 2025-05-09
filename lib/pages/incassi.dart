@@ -115,7 +115,10 @@ class Incassi extends StatelessWidget {
                                         wc) >
                                     0) {
                                   FocusManager.instance.primaryFocus?.unfocus();
+                                  ic.contantiController.text = '';
                                   ic.resetSelection();
+                                  ic.importoselezionatodapagare = 0;
+                                  ic.contanti.value = '0.00';
                                   snackBar("Avviso", "Pagamento inviato",
                                       Colors.green);
                                 }
@@ -161,6 +164,27 @@ class Incassi extends StatelessWidget {
                                       ic.toggleRowSelection(
                                           ic.scadenziario[index].capaId,
                                           isSelected ?? false);
+                                      if (isSelected == true) {
+                                        ic.importoselezionatodapagare += ic
+                                            .scadenziario[index]
+                                            .capaImportoDare;
+                                      } else {
+                                        ic.importoselezionatodapagare -= ic
+                                            .scadenziario[index]
+                                            .capaImportoDare;
+                                      }
+                                      if (ic.importoselezionatodapagare
+                                              .toStringAsFixed(2) ==
+                                          '0.00') {
+                                        ic.contantiController.text = '';
+                                      } else {
+                                        ic.contantiController.text = ic
+                                            .importoselezionatodapagare
+                                            .toStringAsFixed(2);
+                                        ic.contanti.value = ic
+                                            .importoselezionatodapagare
+                                            .toStringAsFixed(2);
+                                      }
                                     },
                                     cells: <DataCell>[
                                       DataCell(Text(ic

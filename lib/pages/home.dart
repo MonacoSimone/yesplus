@@ -46,7 +46,7 @@ class HomePage extends StatelessWidget {
             height: 50,
           ),
         ),
-        title: const Text('ORDER ENTRY (v 1.0.3)'),
+        title: const Text('ORDER ENTRY (v 1.0.5)'),
         actions: [
           Obx(
             () => cc.clienteSelezionato.value.mbanId != 0

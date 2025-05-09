@@ -25,7 +25,7 @@ android {
             applicationIdSuffix = ".standard"
             versionNameSuffix = "-standard"
             applicationId = "com.monacosimone.yesplus"
-            versionName = "1.0.3"
+            versionName = "1.0.5"
             resValue("string", "app_name", "YesPlus")
             /* ndk {
                 abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
@@ -36,7 +36,7 @@ android {
             applicationIdSuffix = ".gelomare"
             versionNameSuffix = "-gelomare"
             applicationId = "com.monacosimone.yesplus"
-            versionName = "1.0.3"
+            versionName = "1.0.5"
             resValue("string", "app_name", "Yes+ Gelomare")
             /* ndk {
                 abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
@@ -47,7 +47,7 @@ android {
             applicationIdSuffix = ".mcfood"
             versionNameSuffix = "-mcfood"
             applicationId = "com.monacosimone.yesplus"
-            versionName = "1.0.3"
+            versionName = "1.0.5"
             resValue("string", "app_name", "Yes+ McFood")
             /* ndk {
                 abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))

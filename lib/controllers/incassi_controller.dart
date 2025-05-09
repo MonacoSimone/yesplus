@@ -24,7 +24,7 @@ class IncassiController extends GetxController {
   List<Partita> scadenziarioOriginale = <Partita>[].obs;
   List<Partita> partiteSelezionate = <Partita>[];
   String formato = 'yyyy-MM-dd HH:mm:ss';
-
+  double importoselezionatodapagare = 0.0;
   RxSet<int> selectedRows = <int>{}.obs;
 
   Color coloreNormale = const Color.fromARGB(255, 23, 164, 207);

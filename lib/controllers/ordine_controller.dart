@@ -493,7 +493,7 @@ class OrdineController extends GetxController {
           "OCAR_MGAA_Id": prodotto.idProdotto,
           "OCAR_Quantita": prodotto.quantita.value,
           "OCAR_MBUM_Codice": prodotto.UM,
-          "OCAR_Prezzo": double.parse(prodotto.prezzo.toStringAsFixed(2)),
+          "OCAR_Prezzo": prodotto.prezzoListino,
           "OCAR_DescrArt": prodotto.nomeProdotto,
           "OCAR_TotSconti": prodotto.sconti,
           "OCAR_ScontiFinali": prodotto.sconti,
