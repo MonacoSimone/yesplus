@@ -25,7 +25,7 @@ android {
             applicationIdSuffix = ".standard"
             versionNameSuffix = "-standard"
             applicationId = "com.monacosimone.yesplus"
-            versionName = "1.0.5"
+            versionName = "1.1.0"
             resValue("string", "app_name", "YesPlus")
             /* ndk {
                 abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))

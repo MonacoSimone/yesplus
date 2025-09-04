@@ -98,7 +98,7 @@ class _HomePageState extends State<HomePage> {
             height: 50,
           ),
         ),
-        title: const Text('ORDER ENTRY (v 1.0.5)'),
+        title: const Text('ORDER ENTRY (v 1.1.0)'),
         actions: [
           Obx(
             () => cc.clienteSelezionato.value.mbanId != 0
@@ -137,7 +137,7 @@ class _HomePageState extends State<HomePage> {
                               fc.resetFatturato();
                               oc.resetOrdine();
                               oc.clearProdotti();
-                              ic.importoselezionatodapagare=0.0;
+                              ic.importoselezionatodapagare = 0.0;
                             },
                             icon: const Icon(
                               Icons.highlight_off,
