@@ -167,11 +167,11 @@ class Incassi extends StatelessWidget {
                                       if (isSelected == true) {
                                         ic.importoselezionatodapagare += ic
                                             .scadenziario[index]
-                                            .capaImportoDare;
+                                            .capaResiduo;
                                       } else {
                                         ic.importoselezionatodapagare -= ic
                                             .scadenziario[index]
-                                            .capaImportoDare;
+                                            .capaResiduo;
                                       }
                                       if (ic.importoselezionatodapagare
                                               .toStringAsFixed(2) ==

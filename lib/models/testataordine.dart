@@ -58,38 +58,69 @@ class TestataOrdine {
     required this.ocanAppId,
   });
 
-  factory TestataOrdine.fromJson(Map<String, dynamic> json) => TestataOrdine(
-        ocanId: json["OCAN_ID"] ?? 0,
-        ocanAnnoOrd: json["OCAN_AnnoOrd"] ?? 0,
-        ocanOctiId: json["OCAN_OCTI_ID"] ?? 0,
-        ocanNumOrd: json["OCAN_NumOrd"] ?? 0,
-        ocanDataIns: json["OCAN_DataIns"] == null
-            ? DateTime.now().toString()
-            : DateTime.parse(json["OCAN_DataIns"]).toString(),
-        ocanMbpcId: json["OCAN_MBPC_ID"] ?? 0,
-        ocanDataConf: json["OCAN_DataConf"] == null
-            ? DateTime.now().toString()
-            : DateTime.parse(json["OCAN_DataConf"]).toString(),
-        ocanDataEvas: json["OCAN_DataEvas"] == null
-            ? DateTime.now().toString()
-            : DateTime.parse(json["OCAN_DataEvas"]).toString(),
-        ocanStamp: json["OCAN_Stamp"] ? 1 : 0,
-        ocanEvaso: json["OCAN_Evaso"] ? 1 : 0,
-        ocanParzEvaso: json["OCAN_ParzEvaso"] ? 1 : 0,
-        ocanEvasoForz: json["OCAN_EvasoForz"] ? 1 : 0,
-        ocanNoteIniz: json["OCAN_NoteIniz"] ?? '',
-        ocanNoteFin: json["OCAN_NoteFin"] ?? '',
-        ocanDestinat: json["OCAN_Destinat"] ?? '',
-        ocanDestinaZ: json["OCAN_DestinaZ"] ?? '',
-        ocanTotOrdine: json["OCAN_TotOrdine"]?.toDouble() ?? 0.0,
-        ocanDestMbanId: json["OCAN_Dest_MBAN_ID"] ?? 0,
-        ocanDeszMbanId: json["OCAN_Desz_MBAN_ID"] ?? 0,
-        ocanConfermato: json["OCAN_Confermato"] ? 1 : 0,
-        ocanDataCreate: json["OCAN_DataCreate"] == null
-            ? DateTime.now().toString()
-            : DateTime.parse(json["OCAN_DataCreate"]).toString(),
-        ocanAppId: json["OCAN_APP_ID"],
-      );
+// Sostituisci l'intero factory TestataOrdine.fromJson con questo blocco di codice.
+
+  factory TestataOrdine.fromJson(Map<String, dynamic> json) {
+    // Funzione helper per parsare le date in modo sicuro
+    String _parseDate(dynamic dateString) {
+      if (dateString == null || dateString.toString().isEmpty) {
+        // Se il dato è nullo o vuoto, ritorna una data valida di default (o gestisci come preferisci)
+        return DateTime.now().toIso8601String();
+      }
+      String value = dateString.toString();
+      try {
+        // Prova a parsare direttamente, funziona per il formato ISO 8601 corretto (con la T)
+        return DateTime.parse(value).toIso8601String();
+      } on FormatException {
+        // Se fallisce, potrebbe essere nel vecchio formato con lo spazio.
+        // Sostituisci il primo spazio con 'T' e riprova.
+        try {
+          final compliantString = value.replaceFirst(' ', 'T');
+          return DateTime.parse(compliantString).toIso8601String();
+        } catch (e) {
+          // Se anche questo tentativo fallisce, ritorna una data di default per evitare crash.
+          print(
+              'ERRORE: Impossibile parsare la data "$value", uso data corrente come fallback.');
+          return DateTime.now().toIso8601String();
+        }
+      }
+    }
+
+    return TestataOrdine(
+      ocanId: json["OCAN_ID"] ?? 0,
+      ocanAnnoOrd: json["OCAN_AnnoOrd"] ?? 0,
+      ocanOctiId: json["OCAN_OCTI_ID"] ?? 0,
+      ocanNumOrd: json["OCAN_NumOrd"] ?? 0,
+      ocanDataIns: _parseDate(json["OCAN_DataIns"]),
+      ocanMbpcId: json["OCAN_MBPC_ID"] ?? 0,
+      ocanDataConf: _parseDate(json["OCAN_DataConf"]),
+      ocanDataEvas: _parseDate(json["OCAN_DataEvas"]),
+      ocanStamp: json["OCAN_Stamp"] is bool
+          ? (json["OCAN_Stamp"] ? 1 : 0)
+          : (json["OCAN_Stamp"] ?? 0),
+      ocanEvaso: json["OCAN_Evaso"] is bool
+          ? (json["OCAN_Evaso"] ? 1 : 0)
+          : (json["OCAN_Evaso"] ?? 0),
+      ocanParzEvaso: json["OCAN_ParzEvaso"] is bool
+          ? (json["OCAN_ParzEvaso"] ? 1 : 0)
+          : (json["OCAN_ParzEvaso"] ?? 0),
+      ocanEvasoForz: json["OCAN_EvasoForz"] is bool
+          ? (json["OCAN_EvasoForz"] ? 1 : 0)
+          : (json["OCAN_EvasoForz"] ?? 0),
+      ocanNoteIniz: json["OCAN_NoteIniz"] ?? '',
+      ocanNoteFin: json["OCAN_NoteFin"] ?? '',
+      ocanDestinat: json["OCAN_Destinat"] ?? '',
+      ocanDestinaZ: json["OCAN_DestinaZ"] ?? '',
+      ocanTotOrdine: json["OCAN_TotOrdine"]?.toDouble() ?? 0.0,
+      ocanDestMbanId: json["OCAN_Dest_MBAN_ID"] ?? 0,
+      ocanDeszMbanId: json["OCAN_Desz_MBAN_ID"] ?? 0,
+      ocanConfermato: json["OCAN_Confermato"] is bool
+          ? (json["OCAN_Confermato"] ? 1 : 0)
+          : (json["OCAN_Confermato"] ?? 0),
+      ocanDataCreate: _parseDate(json["OCAN_DataCreate"]),
+      ocanAppId: json["OCAN_APP_ID"],
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         "OCAN_ID": ocanId,

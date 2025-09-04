@@ -91,7 +91,7 @@ class IncassiController extends GetxController {
     update();
   }
 
-  Future<int> paga(int MBPC_ID, WebSocketController wc) async {
+  /* Future<int> paga(int MBPC_ID, WebSocketController wc) async {
     String imei = await DatabaseHelper().getIMEI();
     int? pfanAppId;
 
@@ -360,6 +360,72 @@ class IncassiController extends GetxController {
     }
 
     //inviaMessaggi(list);
+  } */
+  // Sostituisci l'intero metodo paga con questa nuova versione atomica.
+
+  // Sostituisci il metodo paga con questa versione finale
+
+  Future<int> paga(int mbpcId, WebSocketController wc) async {
+    String imei = await DatabaseHelper().getIMEI();
+    int mbagId = await DatabaseHelper().getMBAGID();
+
+    // --- 1. PREPARA I DATI (invariato) ---
+    List<Map<String, dynamic>> payments = [];
+    double contanti = double.tryParse(contantiController.text) ?? 0.0;
+    double assegni = double.tryParse(assegniController.text) ?? 0.0;
+    double titoli = double.tryParse(titoliController.text) ?? 0.0;
+
+    if (contanti > 0) payments.add({"type": "CONTANTI", "amount": contanti});
+    if (assegni > 0) payments.add({"type": "ASSEGNI", "amount": assegni});
+    if (titoli > 0) payments.add({"type": "TITOLI", "amount": titoli});
+
+    if (payments.isEmpty) {
+      Get.snackbar('Attenzione', 'Nessun importo di pagamento inserito.');
+      return 0;
+    }
+
+    List<int> selectedInvoiceIds = selectedRows.toList();
+    if (selectedInvoiceIds.isEmpty) {
+      Get.snackbar('Attenzione', 'Nessuna partita selezionata da pagare.');
+      return 0;
+    }
+
+    // --- 2. COSTRUISCI IL MESSAGGIO ATOMICO (invariato) ---
+    Map<String, dynamic> fullPaymentMessage = {
+      "QUERY": "INSERT_FULL_PAYMENT",
+      "DATA": {
+        "mbpcId": mbpcId,
+        "mbagId": mbagId,
+        "imei": imei,
+        "payments": payments,
+        "invoiceIds": selectedInvoiceIds,
+      }
+    };
+
+    // --- 3. INVIA IL MESSAGGIO E GESTISCI LA RISPOSTA ---
+    try {
+  // `sendMessage` invia il messaggio e lo mette in coda se offline.
+  await wc.sendMessage(Messaggio(
+    metsMessage: jsonEncode(fullPaymentMessage),
+    metsDataSave: 'diretto',
+  ));
+
+  // Azioni da eseguire SEMPRE dopo aver catturato l'intento dell'utente.
+  resetFiltroIncassi();
+  
+  // NON mostriamo nessuna snackbar qui. Lasciamo che sia il listener
+  // a notificare l'utente quando l'operazione sarà davvero completata.
+  
+  // NON ricarichiamo la lista. Si aggiornerà quando il listener riceverà la conferma.
+  // filtraIncassi(mbpcId);
+
+  return 1;
+} catch (e) {
+  debugPrint('Errore durante l\'invio del pagamento: ${e.toString()}');
+  // L'unica snackbar che mostriamo da qui è in caso di errore grave.
+  Get.snackbar('Errore', 'Impossibile inviare o salvare il pagamento.');
+  return -1;
+}
   }
 
   filtraIncassi(int mbpc_id) async {

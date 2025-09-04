@@ -9,9 +9,12 @@ RigaOrdine righeOrdineFromJson(String str) =>
 
 String righeOrdineToJson(RigaOrdine data) => json.encode(data.toJson());
 
+// Sostituisci l'intera classe RigaOrdine con questa versione
 class RigaOrdine {
+  int? ocarLocaleId;
   int ocarId;
   int ocarOcanId;
+  int ocarMbivId; // <-- CAMPO AGGIUNTO
   double ocarNumRiga;
   int ocarMgaaId;
   double ocarQuantita;
@@ -25,39 +28,45 @@ class RigaOrdine {
   int ocarEForz;
   int ocarMbtaCodice;
   String? ocarAppID;
-  List<ScontoRiga> sconti; // Aggiungi questa lista
+  List<ScontoRiga> sconti;
 
-  RigaOrdine(
-      {required this.ocarId,
-      required this.ocarOcanId,
-      required this.ocarNumRiga,
-      required this.ocarMgaaId,
-      required this.ocarQuantita,
-      required this.ocarMbumCodice,
-      required this.ocarPrezzo,
-      required this.ocarDescrArt,
-      required this.ocarTotSconti,
-      required this.ocarScontiFinali,
-      required this.ocarPrezzoListino,
-      required this.ocarDqta,
-      required this.ocarEForz,
-      required this.ocarMbtaCodice,
-      required this.ocarAppID,
-      required this.sconti});
+  RigaOrdine({
+    this.ocarLocaleId,
+    required this.ocarId,
+    required this.ocarOcanId,
+    required this.ocarMbivId, // <-- AGGIUNTO AL COSTRUTTORE
+    required this.ocarNumRiga,
+    required this.ocarMgaaId,
+    required this.ocarQuantita,
+    required this.ocarMbumCodice,
+    required this.ocarPrezzo,
+    required this.ocarDescrArt,
+    required this.ocarTotSconti,
+    required this.ocarScontiFinali,
+    this.ocarPrezzoListino,
+    required this.ocarDqta,
+    required this.ocarEForz,
+    required this.ocarMbtaCodice,
+    this.ocarAppID,
+    required this.sconti,
+  });
 
   factory RigaOrdine.fromJson(Map<String, dynamic> json) => RigaOrdine(
+        ocarLocaleId: json["ocar_locale_id"],
         ocarId: json["OCAR_ID"] ?? 0,
         ocarOcanId: json["OCAR_OCAN_ID"] ?? 0,
-        ocarNumRiga: json["OCAR_NumRiga"]?.toDouble() ?? 0.0,
+        ocarMbivId: json["OCAR_MBIV_ID"] ?? 0, // <-- AGGIUNTO DA JSON
+        ocarNumRiga: (json["OCAR_NumRiga"] as num?)?.toDouble() ?? 0.0,
         ocarMgaaId: json["OCAR_MGAA_ID"] ?? 0,
-        ocarQuantita: json["OCAR_Quantita"]?.toDouble() ?? 0.0,
+        ocarQuantita: (json["OCAR_Quantita"] as num?)?.toDouble() ?? 0.0,
         ocarMbumCodice: json["OCAR_MBUM_Codice"] ?? '',
-        ocarPrezzo: json["OCAR_Prezzo"]?.toDouble() ?? 0.0,
+        ocarPrezzo: (json["OCAR_Prezzo"] as num?)?.toDouble() ?? 0.0,
         ocarDescrArt: json["OCAR_DescrArt"] ?? '',
-        ocarTotSconti: json["OCAR_TotSconti"]?.toDouble() ?? 0.0,
-        ocarScontiFinali: json["OCAR_ScontiFinali"]?.toDouble() ?? 0.0,
-        ocarPrezzoListino: json["OCAR_PrezzoListino"]?.toDouble(),
-        ocarDqta: json["OCAR_DQTA"]?.toDouble() ?? 0.0,
+        ocarTotSconti: (json["OCAR_TotSconti"] as num?)?.toDouble() ?? 0.0,
+        ocarScontiFinali:
+            (json["OCAR_ScontiFinali"] as num?)?.toDouble() ?? 0.0,
+        ocarPrezzoListino: (json["OCAR_PrezzoListino"] as num?)?.toDouble(),
+        ocarDqta: (json["OCAR_DQTA"] as num?)?.toDouble() ?? 0.0,
         ocarEForz: json["OCAR_EForz"] ?? 0,
         ocarMbtaCodice: json["OCAR_MBTA_Codice"] ?? 1,
         ocarAppID: json["OCAR_APP_ID"],
@@ -70,6 +79,7 @@ class RigaOrdine {
   Map<String, dynamic> toJson() => {
         "OCAR_ID": ocarId,
         "OCAR_OCAN_ID": ocarOcanId,
+        "OCAR_MBIV_ID": ocarMbivId, // <-- AGGIUNTO A JSON
         "OCAR_NumRiga": ocarNumRiga,
         "OCAR_MGAA_ID": ocarMgaaId,
         "OCAR_Quantita": ocarQuantita,
@@ -82,7 +92,8 @@ class RigaOrdine {
         "OCAR_DQTA": ocarDqta,
         "OCAR_EForz": ocarEForz,
         "OCAR_MBTA_Codice": ocarMbtaCodice,
-        "OCAR_APP_ID": ocarAppID
+        "OCAR_APP_ID": ocarAppID,
+        // La logica per "sconti" va gestita separatamente al momento della costruzione del messaggio
       };
 }
 

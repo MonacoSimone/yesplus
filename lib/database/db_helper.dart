@@ -200,10 +200,15 @@ class DatabaseHelper {
             "OCAN_Desz_MBAN_ID" INTEGER,
             "OCAN_Confermato" INTEGER,
             "OCAN_DataCreate" TEXT,
-            "OCAN_APP_ID" TEXT);""";
+            "OCAN_APP_ID" TEXT,
+            "sync_status" INTEGER DEFAULT 0 
+            -- 0=Locale, 1=Inviato, 2=Sincronizzato
+            );""";
       const sqlOCArtic = """CREATE TABLE "OC_Artic" (
-            "OCAR_ID"	INTEGER NOT NULL UNIQUE,
+            "ocar_locale_id" INTEGER PRIMARY KEY AUTOINCREMENT, 
+            "OCAR_ID"	INTEGER,
             "OCAR_OCAN_ID"	INTEGER NOT NULL,
+            "OCAR_MBIV_ID" INTEGER,   
             "OCAR_NumRiga"	INTEGER,
             "OCAR_MBTA_Codice" INTEGER,
             "OCAR_MGAA_ID" INTEGER,
@@ -1194,6 +1199,66 @@ class DatabaseHelper {
         return 'err: $e';
       }
     });
+  }
+
+  /// Salva l'intero ordine (testata e righe) in una singola transazione locale.
+  /// La testata viene salvata con sync_status = 0 (Salvato solo localmente).
+  Future<void> insertFullOrderLocally(
+      TestataOrdine testata, List<RigaOrdine> righe) async {
+    Database db = await _currentDatabase();
+    await db.transaction((txn) async {
+      // Inserisce la testata e ottiene il suo ID locale (che è l'AUTOINCREMENT di SQLite)
+      // Non usiamo questo ID per le relazioni, ma l'APP_ID
+      await txn.insert('OC_Anag', testata.toJson());
+
+      // Inserisce ogni riga. La relazione è garantita dall'APP_ID della testata,
+      // ma per coerenza futura possiamo legarle anche con l'ID locale se necessario.
+      for (final riga in righe) {
+        // In questo modello, la riga non ha un riferimento diretto all'APP_ID della testata,
+        // la relazione è gestita a livello logico. Inseriamo la riga così com'è.
+        await txn.insert('OC_Artic', riga.toJson());
+      }
+    });
+  }
+
+  /// Aggiorna lo stato di un ordine a "Sincronizzato" e salva tutti gli ID permanenti
+  /// ricevuti dal server in una singola transazione.
+
+  Future<void> updateOrderAsSynced(String tempOcanAppId, int permanentOcanId,
+      Map<String, int> permanentOcarIds) async {
+    Database db = await _currentDatabase();
+    await db.transaction((txn) async {
+      // Aggiorna la testata con l'ID permanente e lo stato "Sincronizzato" (2)
+      await txn.update(
+        'OC_Anag',
+        {'OCAN_ID': permanentOcanId, 'sync_status': 2},
+        where: 'OCAN_APP_ID = ?',
+        whereArgs: [tempOcanAppId],
+      );
+
+      // Aggiorna ogni riga popolando la colonna OCAR_ID con l'ID permanente del server
+      for (var entry in permanentOcarIds.entries) {
+        String tempOcarAppId = entry.key;
+        int permanentOcarId = entry.value;
+        await txn.update(
+          'OC_Artic',
+          {'OCAR_ID': permanentOcarId}, // <-- Popola la colonna corretta
+          where: 'OCAR_APP_ID = ?',
+          whereArgs: [tempOcarAppId],
+        );
+      }
+    });
+  }
+
+  /// Aggiorna solo il campo sync_status di un ordine usando il suo APP_ID.
+  Future<void> updateOrderStatus(String tempAppId, int status) async {
+    Database db = await _currentDatabase();
+    await db.update(
+      'OC_Anag',
+      {'sync_status': status},
+      where: 'OCAN_APP_ID = ?',
+      whereArgs: [tempAppId],
+    );
   }
 
   Future<String> initDbBLPagameti(PagamentoBolla pagamento) async {
@@ -2302,5 +2367,54 @@ WHERE FTAN_MBPC_ID=$mbpcId AND substr(FTAN_DataIns,1,4)>='${DateTime.now().year 
       debugPrint('Errore nella verifica dell\'esistenza del record: $e');
       return false;
     }
+  }
+  // Aggiungi questi due nuovi metodi completi alla classe DatabaseHelper
+
+  /// Recupera tutte le testate degli ordini che sono state inviate ma non hanno
+  /// ancora ricevuto una conferma di sincronizzazione (sync_status = 1).
+  Future<List<TestataOrdine>> getPendingSyncOrders() async {
+    final db = await _currentDatabase();
+    final List<Map<String, dynamic>> maps = await db.query(
+      'OC_Anag',
+      where: 'sync_status = ?',
+      whereArgs: [1], // 1 = SENT_PENDING_ACK
+    );
+
+    return List.generate(maps.length, (i) {
+      return TestataOrdine.fromJson(maps[i]);
+    });
+  }
+
+  /// Recupera l'intero ordine (testata e righe) dal database locale
+  /// usando l'APP_ID della testata. Necessario per il reinvio.
+  Future<Map<String, dynamic>> getFullOrderByAppId(String ocanAppId) async {
+    final db = await _currentDatabase();
+
+    // Recupera la testata
+    final List<Map<String, dynamic>> testataMaps = await db.query(
+      'OC_Anag',
+      where: 'OCAN_APP_ID = ?',
+      whereArgs: [ocanAppId],
+      limit: 1,
+    );
+
+    if (testataMaps.isEmpty) {
+      return {};
+    }
+
+    // Recupera l'ID locale della testata per trovare le righe associate
+    // NOTA: Questa parte assume che l'ID locale autoincrementato sia affidabile per la relazione.
+    // Un approccio ancora più robusto legherebbe le righe all'APP_ID della testata.
+    // Per ora, proseguiamo con la struttura attuale.
+    final localOcanId = testataMaps.first['OCAN_ID'];
+
+    // Recupera le righe
+    final List<Map<String, dynamic>> righeMaps = await db.query(
+      'OC_Artic',
+      where: 'OCAR_OCAN_ID = ?',
+      whereArgs: [localOcanId],
+    );
+
+    return {'header': testataMaps.first, 'lines': righeMaps};
   }
 }

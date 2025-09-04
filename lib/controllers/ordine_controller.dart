@@ -14,6 +14,7 @@ import '../database/db_helper.dart';
 import '../models/righeOrdine.dart';
 import '../models/testataordine.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:uuid/uuid.dart'; // Aggiunga questo pacchetto per generare ID univoci
 
 class OrdineController extends GetxController {
   RxDouble totale = 0.00.obs;
@@ -332,7 +333,7 @@ class OrdineController extends GetxController {
     disponibilita.value = jsonDecode(response.toString())['disp'].toString(); */
   }
 
-  Future<int> salvaOrdine(int mbpc_id, int mban_id, double totale,
+  /* Future<int> salvaOrdine(int mbpc_id, int mban_id, double totale,
       WebSocketController wc, String note) async {
     String imei = await DatabaseHelper().getIMEI();
     int? ocanAppId = (await DatabaseHelper().getOcanAppId())!;
@@ -631,6 +632,167 @@ class OrdineController extends GetxController {
       // Ad esempio, puoi mostrare un messaggio di errore all'utente
       // oppure registrare l'errore in un file di log
       // In questo caso, restituiamo -1 per indicare un errore
+      return -1;
+    }
+  } */
+
+  Future<int> salvaOrdine(int mbpc_id, int mban_id, double totale,
+      WebSocketController wc, String note) async {
+    // --- 1. PREPARAZIONE DATI E ID TEMPORANEI ---
+    String imei = await DatabaseHelper().getIMEI();
+    int ocanAppIdCounter = (await DatabaseHelper().getOcanAppId())!;
+    String ocanAppIdCompleto = '$imei-$ocanAppIdCounter';
+    int octiId = await DatabaseHelper().getTipoOrdine();
+    int ocanNumOrd = await DatabaseHelper().getLastOrderNum() + 1;
+    int mbsc_id = await DatabaseHelper().getMBSCID();
+    int mbdv_id = await DatabaseHelper().getMBDVID();
+
+    TestataOrdine testata = TestataOrdine(
+      ocanId: 0, // ID permanente ancora sconosciuto
+      ocanAnnoOrd: DateTime.now().year,
+      ocanOctiId: octiId,
+      ocanNumOrd: ocanNumOrd,
+      ocanDataIns: DateTime.now().toIso8601String(),
+      ocanMbpcId: mbpc_id,
+      ocanDataConf: DateTime.now().toIso8601String(),
+      ocanDataEvas: '',
+      ocanStamp: 0,
+      ocanEvaso: 0,
+      ocanParzEvaso: 0,
+      ocanEvasoForz: 0,
+      ocanNoteIniz: note,
+      ocanNoteFin: '',
+      ocanDestinat: selectedValue.value,
+      ocanDestinaZ: selectedValue.value,
+      ocanTotOrdine: totale,
+      ocanDestMbanId: mban_id,
+      ocanDeszMbanId: mban_id,
+      ocanConfermato: 1,
+      ocanDataCreate: DateTime.now().toIso8601String(),
+      ocanAppId: ocanAppIdCompleto,
+    );
+
+    List<RigaOrdine> righe = [];
+    double numRiga = 1;
+    for (var prodotto in prodottiCarrello) {
+      int ocarAppIdCounter = (await DatabaseHelper().getOcarAppId())!;
+      String ocarAppIdCompleto = '$imei-$ocarAppIdCounter';
+
+      righe.add(RigaOrdine(
+        ocarId: 0, // ID permanente sconosciuto
+        ocarOcanId: 0, // Relazione gestita tramite APP_ID
+        ocarNumRiga: numRiga,
+        ocarMbivId: prodotto.idIva,
+        ocarMgaaId: prodotto.idProdotto,
+        ocarQuantita: prodotto.quantita.value,
+        ocarMbumCodice: prodotto.UM,
+        ocarPrezzo: prodotto.prezzo,
+        ocarDescrArt: prodotto.nomeProdotto,
+        ocarTotSconti: prodotto.sconti,
+        ocarScontiFinali: prodotto.sconti,
+        ocarPrezzoListino: prodotto.prezzoListino,
+        ocarDqta: prodotto.quantita.value,
+        ocarEForz: 0,
+        ocarMbtaCodice: prodotto.prezzo == 0 ? 5 : 1,
+        ocarAppID: ocarAppIdCompleto,
+        sconti: [
+          if (prodotto.sconto1 != 0)
+            ScontoRiga(
+                ocPrior: 1,
+                ocscMbstId: 23,
+                ocscPercVal: 0,
+                ocscBaseAppl: 1,
+                ocscValore: prodotto.sconto1!,
+                ocscFinale: 0,
+                ocscTipo: 1,
+                ocscFactor: 1,
+                ocscForCfg: 0),
+          if (prodotto.sconto2 != 0)
+            ScontoRiga(
+                ocPrior: 2,
+                ocscMbstId: 25,
+                ocscPercVal: 0,
+                ocscBaseAppl: 0,
+                ocscValore: prodotto.sconto2!,
+                ocscFinale: 0,
+                ocscTipo: 2,
+                ocscFactor: 1,
+                ocscForCfg: 0),
+          if (prodotto.sconto3 != 0)
+            ScontoRiga(
+                ocPrior: 3,
+                ocscMbstId: 26,
+                ocscPercVal: 0,
+                ocscBaseAppl: 0,
+                ocscValore: prodotto.sconto3!,
+                ocscFinale: 0,
+                ocscTipo: 3,
+                ocscFactor: 1,
+                ocscForCfg: 0),
+        ],
+      ));
+      await DatabaseHelper().updateDbApprId(ocarAppIdCounter);
+      numRiga++;
+    }
+
+    // --- 2. SALVATAGGIO LOCALE PREVENTIVO ---
+    try {
+      await DatabaseHelper().insertFullOrderLocally(testata, righe);
+      await DatabaseHelper().updateDbApptId(ocanAppIdCounter);
+      debugPrint(
+          'Ordine salvato localmente con APP_ID: $ocanAppIdCompleto e sync_status=0');
+    } catch (e) {
+      debugPrint('Errore nel salvataggio locale dell\'ordine: $e');
+      Get.snackbar(
+          'Errore Locale', 'Impossibile salvare l\'ordine sul dispositivo.');
+      return -1;
+    }
+
+    // --- 3. COSTRUZIONE MESSAGGIO ATOMICO ---
+    Map<String, dynamic> headerJson = testata.toJson();
+// Rendiamo le chiavi coerenti con il resto del modello (_ID maiuscolo)
+    headerJson['OCAN_MBDV_ID'] = mbdv_id;
+    headerJson['OCAN_MBSC_ID'] = mbsc_id;
+    Map<String, dynamic> fullOrderMessage = {
+      "QUERY": "INSERT_FULL_ORDER",
+      "DATA": {
+        "header": headerJson, // Usiamo la mappa arricchita
+        "lines": righe.map((riga) => riga.toJson()).toList(),
+        "payments": {
+          "MBPC_ID": mbpc_id,
+          "OCPG_MBTP_Id": "@MBTP_ID",
+          "OCPG_MBSP_Id": "@MBSP_ID",
+          "OCPG_Importo": "@IMPORTO",
+          "OCPG_Perc": "@PERC"
+        }
+      }
+    };
+
+    // --- 4. INVIO E GESTIONE RISPOSTA ---
+    try {
+      // Invia il messaggio unico
+      int result = await wc.sendMessage(Messaggio(
+        metsMessage: jsonEncode(fullOrderMessage),
+        metsDataSave:
+            'diretto', // Il salvataggio offline è ora gestito diversamente
+      ));
+
+      // Se sendMessage ritorna un valore > 0, l'invio è partito. Se è -1, è andato in coda.
+      if (result != -1) {
+        // Aggiorna lo stato a "inviato"
+        await DatabaseHelper()
+            .updateOrderStatus(ocanAppIdCompleto, 1); // 1 = SENT_PENDING_ACK
+        debugPrint(
+            'Ordine $ocanAppIdCompleto inviato. Impostato sync_status=1');
+      }
+
+      Get.back(); // Chiudi il dialog di conferma
+      Get.snackbar('Ordine Inviato', 'L\'ordine è in fase di elaborazione.');
+      resetOrdine(); // Pulisci il carrello
+      return 1;
+    } catch (e) {
+      debugPrint('Errore durante l\'invio dell\'ordine: ${e.toString()}');
+      Get.snackbar('Errore di Invio', 'Controlla la connessione e riprova.');
       return -1;
     }
   }
