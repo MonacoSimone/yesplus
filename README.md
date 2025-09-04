@@ -3390,3 +3390,51 @@ GO
 ## Modifiche su YES
 
 * Aggiungere su TipiBolla, TipiOrdine e TipiFattura la stored corrispondente in chiusura.
+
+
+## Usare questa query per controlare su un database di produzione es. gelomare quali sono effettivamente le tabelle le funzioni e i trigger 
+```
+/* ============================================================
+   CONTEX: Database di lavoro
+   ============================================================ */
+USE [TestVendite];
+/* niente GO qui, cosÏ la @patterns resta valida per tutto lo script */
+
+/* ============================================================
+   Prefissi da cercare nei N O M I (underscore come carattere)
+   ============================================================ */
+DECLARE @patterns TABLE (pattern sysname NOT NULL);
+INSERT INTO @patterns(pattern)
+VALUES (N'Z[_]APP%'), (N'ZAPP[_]%');
+
+/* ============================================================
+   A) Oggetti IL CUI NOME inizia con Z_APP o ZAPP_
+   (tabelle, viste, procedure, funzioni, trigger DML/DDL)
+   ============================================================ */
+SELECT 'TABLE' AS kind, s.name AS [schema], t.name AS object_name
+FROM sys.tables AS t
+JOIN sys.schemas AS s ON s.schema_id = t.schema_id
+WHERE EXISTS (SELECT 1 FROM @patterns p WHERE t.name LIKE p.pattern)
+
+UNION ALL
+SELECT 'VIEW', s.name, v.name
+FROM sys.views AS v
+JOIN sys.schemas AS s ON s.schema_id = v.schema_id
+WHERE EXISTS (SELECT 1 FROM @patterns p WHERE v.name LIKE p.pattern)
+
+UNION ALL
+SELECT 'FUNCTION', s.name, o.name
+FROM sys.objects AS o
+JOIN sys.schemas AS s ON s.schema_id = o.schema_id
+WHERE o.type IN ('FN','IF','TF','FS','FT')  -- scalar, inline TVF, TVF, CLR scalar, CLR TVF
+  AND EXISTS (SELECT 1 FROM @patterns p WHERE o.name LIKE p.pattern)
+
+UNION ALL
+-- Trigger DML (su tabelle/viste)
+SELECT 'TRIGGER (DML)',
+       OBJECT_SCHEMA_NAME(tr.parent_id) AS [schema],
+       tr.name AS object_name
+FROM sys.triggers AS tr
+WHERE tr.parent_class_desc = 'OBJECT_OR_COLUMN'
+  AND EXISTS (SELECT 1 FROM @patterns p WHERE tr.name LIKE p.pattern)
+```
