@@ -76,7 +76,7 @@ class FatturatoChart extends StatelessWidget {
                                   'Dic'
                                 ];
                                 return SideTitleWidget(
-                                  axisSide: meta.axisSide,
+                                  meta: meta,
                                   space: 6.0, // Spazio tra i titoli e gli assi
                                   child:
                                       Text(texts[value.toInt() % texts.length]),

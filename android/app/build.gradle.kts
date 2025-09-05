@@ -65,8 +65,8 @@ android {
 
     splits {
         abi {
-            //sEnable = false // Disabilita la suddivisione per ABI
-            isEnable = true // Abilita la suddivisione per ABI
+            isEnable = false // Disabilita la suddivisione per ABI
+            //isEnable = true // Abilita la suddivisione per ABI
             isUniversalApk = true // Genera un APK universale
         }
     }
