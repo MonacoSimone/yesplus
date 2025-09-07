@@ -61,7 +61,7 @@ CREATE TABLE [dbo].[Z_APP_dispositivi](
 	[ZAPPD_device_id] [varchar](255) NULL,
 	[ZAPPD_stato] [varchar](100) NOT NULL,
 	[ZAPPD_ultimaConnessione] [datetime] NULL,
-	[ZAPPD_imei] [varchar](255) NULL,
+	[ZAPPD_imei] [varchar](255) NOT NULL,
 	[ZAPPD_OCTI_ID] [int] NULL,
 	[ZAPPD_FTTI_ID] [int] NULL,
 	[ZAPPD_BLTI_ID1] [int] NULL,
@@ -74,6 +74,11 @@ CREATE TABLE [dbo].[Z_APP_dispositivi](
 	[ZAPPD_ID] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 ) ON [PRIMARY]
+
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX IX_Z_APP_dispositivi_ZAPPD_imei
+ON [dbo].[Z_APP_dispositivi] ([ZAPPD_imei])
 
 GO
 
@@ -3312,6 +3317,16 @@ GO
 ALTER TABLE [dbo].[MG_AnaArt] ADD MGAA_IS_LastEditDate TIMESTAMP;
 GO
 ALTER TABLE [dbo].[MB_Anagr] ADD MBAN_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[MB_CliForDestinatari] ADD MBDT_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[MB_CliFor] ADD MBCF_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[MB_CliForSconti] ADD MBSC_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[FT_Artic] ADD FTAR_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[OC_Artic] ADD OCAR_IS_LastEditDate TIMESTAMP;
 GO
 ```
 
