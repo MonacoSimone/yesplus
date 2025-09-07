@@ -3271,6 +3271,50 @@ BEGIN
 	END
 END;
 ```
+
+<a name="timestamp_col"></a>
+  * TIMESTAMP (alcune di queste colonne sono già presenti)
+```
+ALTER TABLE [dbo].[OC_Anag] ADD OCAN_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[BL_Anag] ADD BLAN_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[FT_Anag] ADD FTAN_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[Z_PrezziTv] ADD ZPTV_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[BL_Pagam] ADD BLPG_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[BL_Tipo] ADD BLTI_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[FT_Pagam] ADD FTPG_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[FT_Tipo] ADD FTTI_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[MB_Agenti] ADD MBAG_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[MB_Iva] ADD MBIV_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[MB_SolPag] ADD MBSP_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[MB_TipiArticoloVA] ADD MBTA_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[MB_TipoConto] ADD MBTC_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[MB_TipoPag] ADD MBTP_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[OC_Pagam] ADD OCPG_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[OC_Tipo] ADD OCTI_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[CA_Partite] ADD CAPA_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[MG_AnaArt] ADD MGAA_IS_LastEditDate TIMESTAMP;
+GO
+ALTER TABLE [dbo].[MB_Anagr] ADD MBAN_IS_LastEditDate TIMESTAMP;
+GO
+```
+
 <a name="ed_Trigger"></a>
   * ENABLE/DISABLE Trigger
 ```
