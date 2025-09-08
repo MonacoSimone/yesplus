@@ -933,7 +933,7 @@ class ConnessioneController extends GetxController {
     contMBTP = 0.obs;
     List<TipoPagamento> batch = [];
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/tipopapg/';
+    var url = '${ipAddressApi.value}/initdbclient/tipopag/';
     try {
       dio.Response<dio.ResponseBody> response =
           await dioClient.get<dio.ResponseBody>(

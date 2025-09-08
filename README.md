@@ -3328,6 +3328,8 @@ ALTER TABLE [dbo].[FT_Artic] ADD FTAR_IS_LastEditDate TIMESTAMP;
 GO
 ALTER TABLE [dbo].[OC_Artic] ADD OCAR_IS_LastEditDate TIMESTAMP;
 GO
+ALTER TABLE [dbo].[BL_Artic] ADD BLAR_IS_LastEditDate TIMESTAMP;
+GO
 ```
 
 <a name="ed_Trigger"></a>
