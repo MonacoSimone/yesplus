@@ -61,6 +61,7 @@ CREATE TABLE [dbo].[Z_APP_dispositivi](
 	[ZAPPD_stato] [varchar](100) NOT NULL,
 	[ZAPPD_ultimaConnessione] [datetime] NULL,
 	[ZAPPD_imei] [varchar](255) NOT NULL,
+	[ZAPPD_password] [varchar](255) NOT NULL DEFAULT '',
 	[ZAPPD_OCTI_ID] [int] NULL,
 	[ZAPPD_FTTI_ID] [int] NULL,
 	[ZAPPD_BLTI_ID1] [int] NULL,
@@ -78,6 +79,18 @@ GO
 
 CREATE UNIQUE NONCLUSTERED INDEX IX_Z_APP_dispositivi_ZAPPD_imei
 ON [dbo].[Z_APP_dispositivi] ([ZAPPD_imei])
+
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
+    WHERE TABLE_NAME = 'Z_APP_dispositivi' 
+    AND COLUMN_NAME = 'ZAPPD_password'
+)
+BEGIN
+    ALTER TABLE Z_APP_dispositivi 
+    ADD ZAPPD_password varchar(255) NOT NULL DEFAULT ''
+END
 
 GO
 
