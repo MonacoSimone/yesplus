@@ -226,30 +226,6 @@ class ConnessioneController extends GetxController {
   bool getPermission = false;
   String message = "Per piacere concedi i permessi.";
   RxList<RxString> stato = <RxString>[].obs;
-  RxString numMBAN = ''.obs;
-  RxString numCAPA = ''.obs;
-  RxString numBLTI = ''.obs;
-  RxString numMBAG = ''.obs;
-  RxString numFTTI = ''.obs;
-  RxString numOCTI = ''.obs;
-  RxString numOCAN = ''.obs;
-  RxString numOCAR = ''.obs;
-  RxString numFTAN = ''.obs;
-  RxString numFTAR = ''.obs;
-  RxString numBLAN = ''.obs;
-  RxString numBLAR = ''.obs;
-  RxString numMGAA = ''.obs;
-  RxString numMBIV = ''.obs;
-  RxString numMBTP = ''.obs;
-  RxString numMBSP = ''.obs;
-  RxString numBLPG = ''.obs;
-  RxString numOCPG = ''.obs;
-  RxString numFTPG = ''.obs;
-  RxString numMBTC = ''.obs;
-  RxString numMBTA = ''.obs;
-  RxString numCFDT = ''.obs;
-  RxString numSconti = ''.obs;
-  RxString numprezzi = ''.obs;
 
   RxInt contMBAN = 1.obs;
   RxInt contMBAG = 1.obs;
@@ -384,14 +360,6 @@ class ConnessioneController extends GetxController {
 
   /*ANAGRAFICHE*/
 
-  Future<void> getNumMbAnag(int mbagid, int tipoConto) async {
-    numMBAN = '0'.obs;
-    var dioClient = dio.Dio();
-    final response = await dioClient
-        .get('${ipAddressApi.value}/infoInitDb/numMBAnag/$tipoConto/$mbagid');
-    numMBAN = jsonDecode(response.toString())['tot'].toString().obs;
-  }
-
   Future<void> initMB_Anag(int mbagid, int tipoConto) async {
     contMBAN = 0.obs;
     List<Cliente> batch = [];
@@ -411,9 +379,9 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumMbAnag(mbagid, tipoConto);
+      // await getNumMbAnag(mbagid, tipoConto);
 
-      stato.add('${contMBAN.value} di ${numMBAN.value}'.obs);
+      // stato.add('${contMBAN.value} di ${numMBAN.value}'.obs);
 
       await for (String line in stream) {
         if (line.isNotEmpty) {
@@ -427,8 +395,8 @@ class ConnessioneController extends GetxController {
               contMBAN.value = contMBAN.value + batch.length;
               batch.clear();
               if (controllo == 'ok') {
-                stato[stato.length - 1] =
-                    '${contMBAN.value} di ${numMBAN.value}'.obs;
+                // stato[stato.length - 1] =
+                //     '${contMBAN.value} di ${numMBAN.value}'.obs;
               } else {
                 stato[stato.length - 1] = controllo.obs;
               }
@@ -445,7 +413,7 @@ class ConnessioneController extends GetxController {
         contMBAN.value = contMBAN.value + batch.length;
         batch.clear(); // Svuota il batch dopo l'inserimento
         if (controllo == 'ok') {
-          stato[stato.length - 1] = '${contMBAN.value} di ${numMBAN.value}'.obs;
+          // stato[stato.length - 1] = '${contMBAN.value} di ${numMBAN.value}'.obs;
         } else {
           stato[stato.length - 1] = controllo.obs;
         }
@@ -457,15 +425,6 @@ class ConnessioneController extends GetxController {
   }
 
   /*DESTINAZIONE ANAGRAFICHE */
-
-  Future<void> getNumMbCliForDest(int mbagid, int tipoConto) async {
-    numCFDT = '0'.obs;
-    var dioClient = dio.Dio();
-    final response = await dioClient.get(
-        '${ipAddressApi.value}/infoInitDb/nummbclifordest/$tipoConto/$mbagid');
-    numCFDT = jsonDecode(response.toString())['tot'].toString().obs;
-  }
-
   Future<void> initMBCliForDest(int mbagid, int tipoConto) async {
     contCFDT = 0.obs;
     List<MbCliForDest> batch = [];
@@ -487,9 +446,9 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumMbCliForDest(mbagid, tipoConto);
+      // await getNumMbCliForDest(mbagid, tipoConto);
 
-      stato.add('${contCFDT.value} di ${numCFDT.value}'.obs);
+      // stato.add('${contCFDT.value} di ${numCFDT.value}'.obs);
 
       await for (String line in stream) {
         if (line.isNotEmpty) {
@@ -503,8 +462,8 @@ class ConnessioneController extends GetxController {
               contCFDT.value = contCFDT.value + batch.length;
               batch.clear();
               if (controllo == 'ok') {
-                stato[stato.length - 1] =
-                    '${contCFDT.value} di ${numCFDT.value}'.obs;
+                // stato[stato.length - 1] =
+                //     '${contCFDT.value} di ${numCFDT.value}'.obs;
               } else {
                 stato[stato.length - 1] = controllo.obs;
               }
@@ -522,7 +481,7 @@ class ConnessioneController extends GetxController {
         contCFDT.value = contCFDT.value + batch.length;
         batch.clear(); // Svuota il batch dopo l'inserimento
         if (controllo == 'ok') {
-          stato[stato.length - 1] = '${contCFDT.value} di ${numCFDT.value}'.obs;
+          // stato[stato.length - 1] = '${contCFDT.value} di ${numCFDT.value}'.obs;
         } else {
           stato[stato.length - 1] = controllo.obs;
         }
@@ -534,14 +493,6 @@ class ConnessioneController extends GetxController {
   }
 
   /*SCONTI ANAGRAFICHE */
-  Future<void> getNumSconti(int mbagid, int tipoConto) async {
-    var dioClient = dio.Dio();
-    final response = await dioClient.get(
-        '${ipAddressApi.value}/infoInitDb/numMBAnag/sconti/$tipoConto/$mbagid');
-    debugPrint(response.toString());
-    numSconti.value = jsonDecode(response.toString())['tot'].toString();
-  }
-
   Future<void> initSconti(int mbagid, int tipoConto) async {
     contSconti = 0.obs;
     var dioClient = dio.Dio();
@@ -563,9 +514,9 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumSconti(mbagid, tipoConto);
+      // await getNumSconti(mbagid, tipoConto);
 
-      stato.add('${contSconti.value} di ${numSconti.value}'.obs);
+      // stato.add('${contSconti.value} di ${numSconti.value}'.obs);
 
       List<Sconto> batch = [];
       int batchSize = 100; // Set a batch size as needed
@@ -583,8 +534,8 @@ class ConnessioneController extends GetxController {
               contSconti.value = contSconti.value + batch.length;
               batch.clear();
               if (controllo == 'ok') {
-                stato[stato.length - 1] =
-                    '${contSconti.value} di ${numSconti.value}'.obs;
+                // stato[stato.length - 1] =
+                // '${contSconti.value} di ${numSconti.value}'.obs;
               } else {
                 stato[stato.length - 1] = controllo.obs;
               }
@@ -601,8 +552,8 @@ class ConnessioneController extends GetxController {
         contSconti.value = contSconti.value + batch.length;
         batch.clear();
         if (controllo == 'ok') {
-          stato[stato.length - 1] =
-              '${contSconti.value} di ${numSconti.value}'.obs;
+          // stato[stato.length - 1] =
+          //     '${contSconti.value} di ${numSconti.value}'.obs;
         } else {
           stato[stato.length - 1] = controllo.obs;
         }
@@ -615,15 +566,6 @@ class ConnessioneController extends GetxController {
   }
 
   /*Z_PrezziTv */
-
-  Future<void> getNumZPrezziTv() async {
-    var dioClient = dio.Dio();
-    final response = await dioClient
-        .get('${ipAddressApi.value}/infoInitDb/numMBAnag/zprezzitv');
-    debugPrint(response.toString());
-    numprezzi.value = jsonDecode(response.toString())['tot'].toString();
-  }
-
   Future<void> initZprezziTv() async {
     contZprezzi = 0.obs;
     var dioClient = dio.Dio();
@@ -644,9 +586,9 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumZPrezziTv();
+      // await getNumZPrezziTv();
 
-      stato.add('${contZprezzi.value} di ${numprezzi.value}'.obs);
+      // stato.add('${contZprezzi.value} di ${numprezzi.value}'.obs);
 
       List<PrezziTV> batch = [];
       int batchSize = 100; // Set a batch size as needed
@@ -665,8 +607,8 @@ class ConnessioneController extends GetxController {
               contZprezzi.value = contZprezzi.value + batch.length;
               batch.clear();
               if (controllo == 'ok') {
-                stato[stato.length - 1] =
-                    '${contZprezzi.value} di ${numprezzi.value}'.obs;
+                // stato[stato.length - 1] =
+                //     '${contZprezzi.value} di ${numprezzi.value}'.obs;
               } else {
                 stato[stato.length - 1] = controllo.obs;
               }
@@ -683,8 +625,8 @@ class ConnessioneController extends GetxController {
         contZprezzi.value = contZprezzi.value + batch.length;
         batch.clear();
         if (controllo == 'ok') {
-          stato[stato.length - 1] =
-              '${contZprezzi.value} di ${numprezzi.value}'.obs;
+          // stato[stato.length - 1] =
+          //     '${contZprezzi.value} di ${numprezzi.value}'.obs;
         } else {
           stato[stato.length - 1] = controllo.obs;
         }
@@ -695,17 +637,8 @@ class ConnessioneController extends GetxController {
       debugPrint('Errore durante la richiesta Z Prezzi: $e');
     }
   }
+
   /*ARTICOLI*/
-
-  Future<void> getNumArticoli() async {
-    numMGAA = '0'.obs;
-    var dioClient = dio.Dio();
-    final response =
-        await dioClient.get('${ipAddressApi.value}/infoInitDb/numMGAnaArt');
-
-    numMGAA = jsonDecode(response.toString())['tot'].toString().obs;
-  }
-
   Future<void> initMG_AnaArt() async {
     contMGAA = 0.obs;
     List<Prodotto> batch = [];
@@ -726,9 +659,9 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumArticoli();
+      // await getNumArticoli();
 
-      stato.add('${contMGAA.value} di ${numMGAA.value}'.obs);
+      // stato.add('${contMGAA.value} di ${numMGAA.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -741,8 +674,8 @@ class ConnessioneController extends GetxController {
               contMGAA.value = contMGAA.value + batch.length;
               batch.clear();
               if (controllo == 'ok') {
-                stato[stato.length - 1] =
-                    '${contMGAA.value} di ${numMGAA.value}'.obs;
+                // stato[stato.length - 1] =
+                //     '${contMGAA.value} di ${numMGAA.value}'.obs;
               } else {
                 stato[stato.length - 1] = controllo.obs;
               }
@@ -759,7 +692,7 @@ class ConnessioneController extends GetxController {
         contMGAA.value = contMGAA.value + batch.length;
         batch.clear(); // Svuota il batch dopo l'inserimento
         if (controllo == 'ok') {
-          stato[stato.length - 1] = '${contMGAA.value} di ${numMGAA.value}'.obs;
+          // stato[stato.length - 1] = '${contMGAA.value} di ${numMGAA.value}'.obs;
         } else {
           stato[stato.length - 1] = controllo.obs;
         }
@@ -771,17 +704,6 @@ class ConnessioneController extends GetxController {
   }
 
   /*PARTITE*/
-
-  Future<void> getNumCAPartite(int mbagid, int tipoConto) async {
-    numCAPA = '0'.obs;
-    var dioClient = dio.Dio();
-    final response = await dioClient.get(
-        '${ipAddressApi.value}/infoInitDb/numCAPartite/$tipoConto/$mbagid');
-    logger
-        .i('${ipAddressApi.value}/infoInitDb/numCAPartite/$tipoConto/$mbagid');
-    numCAPA = jsonDecode(response.toString())['tot'].toString().obs;
-  }
-
   Future<void> initCA_Partite(int mbagid, int tipoConto) async {
     contCAPA = 0.obs;
     List<Partita> batch = [];
@@ -802,9 +724,9 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumCAPartite(mbagid, tipoConto);
+      // await getNumCAPartite(mbagid, tipoConto);
 
-      stato.add('${contCAPA.value} di ${numCAPA.value}'.obs);
+      // stato.add('${contCAPA.value} di ${numCAPA.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -817,8 +739,8 @@ class ConnessioneController extends GetxController {
               contCAPA.value = contCAPA.value + batch.length;
               batch.clear();
               if (controllo == 'ok') {
-                stato[stato.length - 1] =
-                    '${contCAPA.value} di ${numCAPA.value}'.obs;
+                // stato[stato.length - 1] =
+                //     '${contCAPA.value} di ${numCAPA.value}'.obs;
               } else {
                 stato[stato.length - 1] = controllo.obs;
               }
@@ -835,7 +757,7 @@ class ConnessioneController extends GetxController {
         contCAPA.value = contCAPA.value + batch.length;
         batch.clear(); // Svuota il batch dopo l'inserimento
         if (controllo == 'ok') {
-          stato[stato.length - 1] = '${contCAPA.value} di ${numCAPA.value}'.obs;
+          // stato[stato.length - 1] = '${contCAPA.value} di ${numCAPA.value}'.obs;
         } else {
           stato[stato.length - 1] = controllo.obs;
         }
@@ -847,16 +769,6 @@ class ConnessioneController extends GetxController {
   }
 
   /*TIPI*/
-
-  Future<void> getNumTipoConto() async {
-    numMBTC = '0'.obs;
-    var dioClient = dio.Dio();
-    final response =
-        await dioClient.get('${ipAddressApi.value}/infoInitDb/numMBTipoConto');
-    logger.i('${ipAddressApi.value}/infoInitDb/numMBTipoConto');
-    numMBTC = jsonDecode(response.toString())['tot'].toString().obs;
-  }
-
   Future<void> initTipoConto() async {
     contMBTC = 0.obs;
     List<TipoConto> batch = [];
@@ -877,9 +789,9 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumTipoConto();
+      // await getNumTipoConto();
 
-      stato.add('${contMBTC.value} di ${numMBTC.value}'.obs);
+      // stato.add('${contMBTC.value} di ${numMBTC.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -892,8 +804,8 @@ class ConnessioneController extends GetxController {
               contMBTC.value = contMBTC.value + batch.length;
               batch.clear();
               if (controllo == 'ok') {
-                stato[stato.length - 1] =
-                    '${contMBTC.value} di ${numMBTC.value}'.obs;
+                // stato[stato.length - 1] =
+                //     '${contMBTC.value} di ${numMBTC.value}'.obs;
               } else {
                 stato[stato.length - 1] = controllo.obs;
               }
@@ -910,7 +822,7 @@ class ConnessioneController extends GetxController {
         contMBTC.value = contMBTC.value + batch.length;
         batch.clear(); // Svuota il batch dopo l'inserimento
         if (controllo == 'ok') {
-          stato[stato.length - 1] = '${contMBTC.value} di ${numMBTC.value}'.obs;
+          // stato[stato.length - 1] = '${contMBTC.value} di ${numMBTC.value}'.obs;
         } else {
           stato[stato.length - 1] = controllo.obs;
         }
@@ -919,14 +831,6 @@ class ConnessioneController extends GetxController {
     } catch (e) {
       debugPrint('Errore durante la richiesta MBTC: $e');
     }
-  }
-
-  Future<void> getNumTipoPag() async {
-    numMBTP = '0'.obs;
-    var dioClient = dio.Dio();
-    final response =
-        await dioClient.get('${ipAddressApi.value}/infoInitDb/numMBTipoPag');
-    numMBTP = jsonDecode(response.toString())['tot'].toString().obs;
   }
 
   Future<void> initMBTipoPag() async {
@@ -948,9 +852,9 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumTipoPag();
+      // await getNumTipoPag();
 
-      stato.add('${contMBTP.value} di ${numMBTP.value}'.obs);
+      // stato.add('${contMBTP.value} di ${numMBTP.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -963,8 +867,8 @@ class ConnessioneController extends GetxController {
               contMBTP.value = contMBTP.value + batch.length;
               batch.clear();
               if (controllo == 'ok') {
-                stato[stato.length - 1] =
-                    '${contMBTP.value} di ${numMBTP.value}'.obs;
+                // stato[stato.length - 1] =
+                //     '${contMBTP.value} di ${numMBTP.value}'.obs;
               } else {
                 stato[stato.length - 1] = controllo.obs;
               }
@@ -981,7 +885,7 @@ class ConnessioneController extends GetxController {
         contMBTP.value = contMBTP.value + batch.length;
         batch.clear(); // Svuota il batch dopo l'inserimento
         if (controllo == 'ok') {
-          stato[stato.length - 1] = '${contMBTP.value} di ${numMBTP.value}'.obs;
+          // stato[stato.length - 1] = '${contMBTP.value} di ${numMBTP.value}'.obs;
         } else {
           stato[stato.length - 1] = controllo.obs;
         }
@@ -990,14 +894,6 @@ class ConnessioneController extends GetxController {
     } catch (e) {
       debugPrint('Errore durante la richiesta MBTP: $e');
     }
-  }
-
-  Future<void> getNumTipiArticolo() async {
-    numMBTA = '0'.obs;
-    var dioClient = dio.Dio();
-    final response = await dioClient
-        .get('${ipAddressApi.value}/infoInitDb/numMBTipiArticolo');
-    numMBTA = jsonDecode(response.toString())['tot'].toString().obs;
   }
 
   Future<void> initMBTipiArticolo() async {
@@ -1019,9 +915,9 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumTipiArticolo();
+      // await getNumTipiArticolo();
 
-      stato.add('${contMBTA.value} di ${numMBTA.value}'.obs);
+      // stato.add('${contMBTA.value} di ${numMBTA.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -1034,8 +930,8 @@ class ConnessioneController extends GetxController {
               contMBTA.value = contMBTA.value + batch.length;
               batch.clear();
               if (controllo == 'ok') {
-                stato[stato.length - 1] =
-                    '${contMBTA.value} di ${numMBTA.value}'.obs;
+                // stato[stato.length - 1] =
+                //     '${contMBTA.value} di ${numMBTA.value}'.obs;
               } else {
                 stato[stato.length - 1] = controllo.obs;
               }
@@ -1053,7 +949,7 @@ class ConnessioneController extends GetxController {
         contMBTA.value = contMBTA.value + batch.length;
         batch.clear(); // Svuota il batch dopo l'inserimento
         if (controllo == 'ok') {
-          stato[stato.length - 1] = '${contMBTA.value} di ${numMBTA.value}'.obs;
+          // stato[stato.length - 1] = '${contMBTA.value} di ${numMBTA.value}'.obs;
         } else {
           stato[stato.length - 1] = controllo.obs;
         }
@@ -1063,14 +959,6 @@ class ConnessioneController extends GetxController {
       debugPrint('Errore durante la richiesta MBTA: $e');
     }
   } //----
-
-  Future<void> getNumSolPag() async {
-    numMBSP = '0'.obs;
-    var dioClient = dio.Dio();
-    final response =
-        await dioClient.get('${ipAddressApi.value}/infoInitDb/numMBSolPag');
-    numMBSP = jsonDecode(response.toString())['tot'].toString().obs;
-  }
 
   Future<void> initMBSolPag() async {
     contMBSP = 0.obs;
@@ -1091,9 +979,9 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumSolPag();
+      // await getNumSolPag();
 
-      stato.add('${contMBSP.value} di ${numMBSP.value}'.obs);
+      // stato.add('${contMBSP.value} di ${numMBSP.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -1106,8 +994,8 @@ class ConnessioneController extends GetxController {
               contMBSP.value = contMBSP.value + batch.length;
               batch.clear();
               if (controllo == 'ok') {
-                stato[stato.length - 1] =
-                    '${contMBSP.value} di ${numMBSP.value}'.obs;
+                // stato[stato.length - 1] =
+                // '${contMBSP.value} di ${numMBSP.value}'.obs;
               } else {
                 stato[stato.length - 1] = controllo.obs;
               }
@@ -1124,7 +1012,7 @@ class ConnessioneController extends GetxController {
         contMBSP.value = contMBSP.value + batch.length;
         batch.clear(); // Svuota il batch dopo l'inserimento
         if (controllo == 'ok') {
-          stato[stato.length - 1] = '${contMBSP.value} di ${numMBSP.value}'.obs;
+          // stato[stato.length - 1] = '${contMBSP.value} di ${numMBSP.value}'.obs;
         } else {
           stato[stato.length - 1] = controllo.obs;
         }
@@ -1133,14 +1021,6 @@ class ConnessioneController extends GetxController {
     } catch (e) {
       debugPrint('Errore durante la richiesta MBSP: $e');
     }
-  }
-
-  Future<void> getNumMbAge() async {
-    numMBAG = '0'.obs;
-    var dioClient = dio.Dio();
-    final response =
-        await dioClient.get('${ipAddressApi.value}/infoInitDb/numMBAge');
-    numMBAG = jsonDecode(response.toString())['tot'].toString().obs;
   }
 
   Future<void> initMBage() async {
@@ -1162,8 +1042,8 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumMbAge();
-      stato.add('${contMBAG.value} di ${numMBAG.value}'.obs);
+      // await getNumMbAge();
+      // stato.add('${contMBAG.value} di ${numMBAG.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -1171,8 +1051,8 @@ class ConnessioneController extends GetxController {
             var ag = Agente.fromJson(jsonData);
             String controllo = await DatabaseHelper().initMBAge(ag);
             if (controllo == 'ok') {
-              stato[stato.length - 1] =
-                  '${contMBAG.value++} di ${numMBAG.value}'.obs;
+              // stato[stato.length - 1] =
+              // '${contMBAG.value++} di ${numMBAG.value}'.obs;
             } else {
               stato[stato.length - 1] = controllo.obs;
             }
@@ -1186,14 +1066,6 @@ class ConnessioneController extends GetxController {
     } catch (e) {
       debugPrint('Errore durante la richiesta MBAG: $e');
     }
-  }
-
-  Future<void> getNumMBIva() async {
-    numMBIV = '0'.obs;
-    var dioClient = dio.Dio();
-    final response =
-        await dioClient.get('${ipAddressApi.value}/infoInitDb/numMBIva');
-    numMBIV = jsonDecode(response.toString())['tot'].toString().obs;
   }
 
   Future<void> initMBiva() async {
@@ -1215,8 +1087,8 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumMBIva();
-      stato.add('${contMBIV.value} di ${numMBIV.value}'.obs);
+      // await getNumMBIva();
+      // stato.add('${contMBIV.value} di ${numMBIV.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -1224,8 +1096,8 @@ class ConnessioneController extends GetxController {
             var iva = Iva.fromJson(jsonData);
             String controllo = await DatabaseHelper().initMBIva(iva);
             if (controllo == 'ok') {
-              stato[stato.length - 1] =
-                  '${contMBIV.value++} di ${numMBIV.value}'.obs;
+              // stato[stato.length - 1] =
+              //     '${contMBIV.value++} di ${numMBIV.value}'.obs;
             } else {
               stato[stato.length - 1] = controllo.obs;
             }
@@ -1239,14 +1111,6 @@ class ConnessioneController extends GetxController {
     } catch (e) {
       debugPrint('Errore durante la richiesta MBIV: $e');
     }
-  }
-
-  Future<void> getNumBlTipo() async {
-    numBLTI = '0'.obs;
-    var dioClient = dio.Dio();
-    final response =
-        await dioClient.get('${ipAddressApi.value}/infoInitDb/numBLTipo');
-    numBLTI = jsonDecode(response.toString())['tot'].toString().obs;
   }
 
   Future<void> initBL_Tipo() async {
@@ -1268,8 +1132,8 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumBlTipo();
-      stato.add('${contBLTI.value} di ${numBLTI.value}'.obs);
+      // await getNumBlTipo();
+      // stato.add('${contBLTI.value} di ${numBLTI.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -1277,8 +1141,8 @@ class ConnessioneController extends GetxController {
             var tipoBolla = TipoBolla.fromJson(jsonData);
             String controllo = await DatabaseHelper().initBLTipo(tipoBolla);
             if (controllo == 'ok') {
-              stato[stato.length - 1] =
-                  '${contBLTI.value++} di ${numBLTI.value}'.obs;
+              // stato[stato.length - 1] =
+              //     '${contBLTI.value++} di ${numBLTI.value}'.obs;
             } else {
               stato[stato.length - 1] = controllo.obs;
             }
@@ -1292,14 +1156,6 @@ class ConnessioneController extends GetxController {
     } catch (e) {
       debugPrint('Errore durante la richiesta BLTI: $e');
     }
-  }
-
-  Future<void> getNumFtTipo() async {
-    numFTTI = '0'.obs;
-    var dioClient = dio.Dio();
-    final response =
-        await dioClient.get('${ipAddressApi.value}/infoInitDb/numFTTipo');
-    numFTTI = jsonDecode(response.toString())['tot'].toString().obs;
   }
 
   Future<void> initFT_Tipo() async {
@@ -1321,8 +1177,8 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumFtTipo();
-      stato.add('${contFTTI.value} di ${numFTTI.value}'.obs);
+      // await getNumFtTipo();
+      // stato.add('${contFTTI.value} di ${numFTTI.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -1330,8 +1186,8 @@ class ConnessioneController extends GetxController {
             var tipoFattura = TipoFattura.fromJson(jsonData);
             String controllo = await DatabaseHelper().initFTTipo(tipoFattura);
             if (controllo == 'ok') {
-              stato[stato.length - 1] =
-                  '${contFTTI.value++} di ${numFTTI.value}'.obs;
+              // stato[stato.length - 1] =
+              //     '${contFTTI.value++} di ${numFTTI.value}'.obs;
             } else {
               stato[stato.length - 1] = controllo.obs;
             }
@@ -1345,14 +1201,6 @@ class ConnessioneController extends GetxController {
     } catch (e) {
       debugPrint('Errore durante la richiesta FTTI: $e');
     }
-  }
-
-  Future<void> getNumOcTipo() async {
-    numOCTI = '0'.obs;
-    var dioClient = dio.Dio();
-    final response =
-        await dioClient.get('${ipAddressApi.value}/infoInitDb/numOCTipo');
-    numOCTI = jsonDecode(response.toString())['tot'].toString().obs;
   }
 
   Future<void> initOC_Tipo() async {
@@ -1374,8 +1222,8 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumOcTipo();
-      stato.add('${contOCTI.value} di ${numOCTI.value}'.obs);
+      // await getNumOcTipo();
+      // stato.add('${contOCTI.value} di ${numOCTI.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -1383,8 +1231,8 @@ class ConnessioneController extends GetxController {
             var tipoOrdine = TipoOrdine.fromJson(jsonData);
             String controllo = await DatabaseHelper().initOCTipo(tipoOrdine);
             if (controllo == 'ok') {
-              stato[stato.length - 1] =
-                  '${contOCTI.value++} di ${numOCTI.value}'.obs;
+              // stato[stato.length - 1] =
+              // '${contOCTI.value++} di ${numOCTI.value}'.obs;
             } else {
               stato[stato.length - 1] = controllo.obs;
             }
@@ -1401,15 +1249,6 @@ class ConnessioneController extends GetxController {
   }
 
   /*ORDINI*/
-
-  Future<void> getNumOCPagam(int mbagid, int tipoConto) async {
-    numOCPG = '0'.obs;
-    var dioClient = dio.Dio();
-    final response = await dioClient
-        .get('${ipAddressApi.value}/infoInitDb/numOCPagam/$tipoConto/$mbagid');
-    logger.i('${ipAddressApi.value}/infoInitDb/numOCPagam/$tipoConto/$mbagid');
-    numOCPG = jsonDecode(response.toString())['tot'].toString().obs;
-  }
 
   Future<void> initOCPagam(int mbagid, int tipoConto) async {
     /*RICHIESTA TESTATE ORDINI */
@@ -1432,8 +1271,8 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumOCPagam(mbagid, tipoConto);
-      stato.add('${contOCPG.value} di ${numOCPG.value}'.obs);
+      // await getNumOCPagam(mbagid, tipoConto);
+      // stato.add('${contOCPG.value} di ${numOCPG.value}'.obs);
 
       await for (String line in stream) {
         if (line.isNotEmpty) {
@@ -1447,8 +1286,8 @@ class ConnessioneController extends GetxController {
               contOCPG.value = contOCPG.value + batch.length;
               batch.clear();
               if (controllo == 'ok') {
-                stato[stato.length - 1] =
-                    '${contOCPG.value} di ${numOCPG.value}'.obs;
+                // stato[stato.length - 1] =
+                //     '${contOCPG.value} di ${numOCPG.value}'.obs;
               } else {
                 stato[stato.length - 1] = controllo.obs;
               }
@@ -1464,7 +1303,7 @@ class ConnessioneController extends GetxController {
         contOCPG.value = contOCPG.value + batch.length;
         batch.clear(); // Svuota il batch dopo l'inserimento
         if (controllo == 'ok') {
-          stato[stato.length - 1] = '${contOCPG.value} di ${numOCPG.value}'.obs;
+          // stato[stato.length - 1] = '${contOCPG.value} di ${numOCPG.value}'.obs;
         } else {
           stato[stato.length - 1] = controllo.obs;
         }
@@ -1473,15 +1312,6 @@ class ConnessioneController extends GetxController {
     } catch (e) {
       debugPrint('Errore durante la richiesta OCPG: $e');
     }
-  }
-
-  Future<void> getNumOcAnag(int mbagid, int tipoConto) async {
-    numOCAN = '0'.obs;
-    var dioClient = dio.Dio();
-    final response = await dioClient
-        .get('${ipAddressApi.value}/infoInitDb/numOCAnag/$tipoConto/$mbagid');
-    logger.i('${ipAddressApi.value}/infoInitDb/numOCAnag/$tipoConto/$mbagid');
-    numOCAN = jsonDecode(response.toString())['tot'].toString().obs;
   }
 
   Future<void> initOC_Anagr(int ocTipo, int tipoConto) async {
@@ -1505,8 +1335,8 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumOcAnag(ocTipo, tipoConto);
-      stato.add('${contOCAN.value} di ${numOCAN.value}'.obs);
+      // await getNumOcAnag(ocTipo, tipoConto);
+      // stato.add('${contOCAN.value} di ${numOCAN.value}'.obs);
 
       await for (String line in stream) {
         if (line.isNotEmpty) {
@@ -1520,8 +1350,8 @@ class ConnessioneController extends GetxController {
               contOCAN.value = contOCAN.value + batch.length;
               batch.clear();
               if (controllo == 'ok') {
-                stato[stato.length - 1] =
-                    '${contOCAN.value} di ${numOCAN.value}'.obs;
+                // stato[stato.length - 1] =
+                // '${contOCAN.value} di ${numOCAN.value}'.obs;
               } else {
                 stato[stato.length - 1] = controllo.obs;
               }
@@ -1537,7 +1367,7 @@ class ConnessioneController extends GetxController {
         contOCAN.value = contOCAN.value + batch.length;
         batch.clear(); // Svuota il batch dopo l'inserimento
         if (controllo == 'ok') {
-          stato[stato.length - 1] = '${contOCAN.value} di ${numOCAN.value}'.obs;
+          // stato[stato.length - 1] = '${contOCAN.value} di ${numOCAN.value}'.obs;
         } else {
           stato[stato.length - 1] = controllo.obs;
         }
@@ -1546,15 +1376,6 @@ class ConnessioneController extends GetxController {
     } catch (e) {
       debugPrint('Errore durante la richiesta OCAN: $e');
     }
-  }
-
-  Future<void> getNumOcArtic(int mbagid, tipoConto) async {
-    numOCAR = '0'.obs;
-    var dioClient = dio.Dio();
-    final response = await dioClient
-        .get('${ipAddressApi.value}/infoInitDb/numOCArtic/$tipoConto/$mbagid');
-    logger.i('${ipAddressApi.value}/infoInitDb/numOCArtic/$tipoConto/$mbagid');
-    numOCAR = jsonDecode(response.toString())['tot'].toString().obs;
   }
 
   Future<void> initOC_Arti(int ocTipo, int tipoConto) async {
@@ -1578,8 +1399,8 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumOcArtic(ocTipo, tipoConto);
-      stato.add('${contOCAR.value} di ${numOCAR.value}'.obs);
+      // await getNumOcArtic(ocTipo, tipoConto);
+      // stato.add('${contOCAR.value} di ${numOCAR.value}'.obs);
 
       await for (String line in stream) {
         if (line.isNotEmpty) {
@@ -1593,8 +1414,8 @@ class ConnessioneController extends GetxController {
               contOCAR.value = contOCAR.value + batch.length;
               batch.clear(); // Svuota il batch dopo l'inserimento
               if (controllo == 'ok') {
-                stato[stato.length - 1] =
-                    '${contOCAR.value} di ${numOCAR.value}'.obs;
+                // stato[stato.length - 1] =
+                //     '${contOCAR.value} di ${numOCAR.value}'.obs;
               } else {
                 stato[stato.length - 1] = controllo.obs;
               }
@@ -1611,7 +1432,7 @@ class ConnessioneController extends GetxController {
         contOCAR.value = contOCAR.value + batch.length;
         batch.clear(); // Svuota il batch dopo l'inserimento
         if (controllo == 'ok') {
-          stato[stato.length - 1] = '${contOCAR.value} di ${numOCAR.value}'.obs;
+          // stato[stato.length - 1] = '${contOCAR.value} di ${numOCAR.value}'.obs;
         } else {
           stato[stato.length - 1] = controllo.obs;
         }
@@ -1623,16 +1444,6 @@ class ConnessioneController extends GetxController {
   }
 
   /*FATTURE*/
-
-  Future<void> getNumFTPagam(int mbagid, int tipoConto) async {
-    numFTPG = '0'.obs;
-    var dioClient = dio.Dio();
-    final response = await dioClient
-        .get('${ipAddressApi.value}/infoInitDb/numFTPagam/$tipoConto/$mbagid');
-    logger.i('${ipAddressApi.value}/infoInitDb/numFTPagam/$tipoConto/$mbagid');
-    numFTPG = jsonDecode(response.toString())['tot'].toString().obs;
-  }
-
   Future<void> initFTPagam(int mbagid, int tipoConto) async {
     /*RICHIESTA TESTATE FATTURE */
     List<PagamentoFattura> batch = [];
@@ -1654,8 +1465,8 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumFTPagam(mbagid, tipoConto);
-      stato.add('${contFTPG.value} di ${numFTPG.value}'.obs);
+      // await getNumFTPagam(mbagid, tipoConto);
+      // stato.add('${contFTPG.value} di ${numFTPG.value}'.obs);
 
       await for (String line in stream) {
         if (line.isNotEmpty) {
@@ -1669,8 +1480,8 @@ class ConnessioneController extends GetxController {
               contFTPG.value = contFTPG.value + batch.length;
               batch.clear();
               if (controllo == 'ok') {
-                stato[stato.length - 1] =
-                    '${contFTPG.value} di ${numFTPG.value}'.obs;
+                // stato[stato.length - 1] =
+                //     '${contFTPG.value} di ${numFTPG.value}'.obs;
               } else {
                 stato[stato.length - 1] = controllo.obs;
               }
@@ -1686,7 +1497,7 @@ class ConnessioneController extends GetxController {
         contFTPG.value = contFTPG.value + batch.length;
         batch.clear(); // Svuota il batch dopo l'inserimento
         if (controllo == 'ok') {
-          stato[stato.length - 1] = '${contFTPG.value} di ${numFTPG.value}'.obs;
+          // stato[stato.length - 1] = '${contFTPG.value} di ${numFTPG.value}'.obs;
         } else {
           stato[stato.length - 1] = controllo.obs;
         }
@@ -1695,15 +1506,6 @@ class ConnessioneController extends GetxController {
     } catch (e) {
       debugPrint('Errore durante la richiesta FTPG: $e');
     }
-  }
-
-  Future<void> getNumFtAanagr(int mbagid, int tipoConto) async {
-    numFTAN = '0'.obs;
-    var dioClient = dio.Dio();
-    final response = await dioClient
-        .get('${ipAddressApi.value}/infoInitDb/numFTAnag/$tipoConto/$mbagid');
-    logger.i('${ipAddressApi.value}/infoInitDb/numFTAnag/$tipoConto/$mbagid');
-    numFTAN = jsonDecode(response.toString())['tot'].toString().obs;
   }
 
   Future<void> initFT_Anagr(int mbagid, int tipoConto) async {
@@ -1727,8 +1529,8 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumFtAanagr(mbagid, tipoConto);
-      stato.add('${contFTAN.value} di ${numFTAN.value}'.obs);
+      // await getNumFtAanagr(mbagid, tipoConto);
+      // stato.add('${contFTAN.value} di ${numFTAN.value}'.obs);
 
       await for (String line in stream) {
         if (line.isNotEmpty) {
@@ -1742,8 +1544,8 @@ class ConnessioneController extends GetxController {
               contFTAN.value = contFTAN.value + batch.length;
               batch.clear();
               if (controllo == 'ok') {
-                stato[stato.length - 1] =
-                    '${contFTAN.value} di ${numFTAN.value}'.obs;
+                // stato[stato.length - 1] =
+                //     '${contFTAN.value} di ${numFTAN.value}'.obs;
               } else {
                 stato[stato.length - 1] = controllo.obs;
               }
@@ -1760,7 +1562,7 @@ class ConnessioneController extends GetxController {
         contFTAN.value = contFTAN.value + batch.length;
         batch.clear(); // Svuota il batch dopo l'inserimento
         if (controllo == 'ok') {
-          stato[stato.length - 1] = '${contFTAN.value} di ${numFTAN.value}'.obs;
+          // stato[stato.length - 1] = '${contFTAN.value} di ${numFTAN.value}'.obs;
         } else {
           stato[stato.length - 1] = controllo.obs;
         }
@@ -1769,15 +1571,6 @@ class ConnessioneController extends GetxController {
     } catch (e) {
       debugPrint('Errore durante la richiesta FTAN: $e');
     }
-  }
-
-  Future<void> getNumFTAR(int mbagid, int tipoConto) async {
-    numFTAR = '1'.obs;
-    var dioClient = dio.Dio();
-    final response = await dioClient
-        .get('${ipAddressApi.value}/infoInitDb/numFTArtic/$tipoConto/$mbagid');
-    logger.i('${ipAddressApi.value}/infoInitDb/numFTArtic/$tipoConto/$mbagid');
-    numFTAR = jsonDecode(response.toString())['tot'].toString().obs;
   }
 
   Future<void> initFT_Artic(int mbagid, int tipoConto) async {
@@ -1801,9 +1594,9 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumFTAR(mbagid, tipoConto);
+      // await getNumFTAR(mbagid, tipoConto);
 
-      stato.add('${contFTAR.value} di ${numFTAR.value}'.obs);
+      // stato.add('${contFTAR.value} di ${numFTAR.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -1816,8 +1609,8 @@ class ConnessioneController extends GetxController {
               contFTAR.value = contFTAR.value + batch.length;
               batch.clear();
               if (controllo == 'ok') {
-                stato[stato.length - 1] =
-                    '${contFTAR.value} di ${numFTAR.value}'.obs;
+                // stato[stato.length - 1] =
+                //     '${contFTAR.value} di ${numFTAR.value}'.obs;
               } else {
                 stato[stato.length - 1] = controllo.obs;
               }
@@ -1833,7 +1626,7 @@ class ConnessioneController extends GetxController {
         contFTAR.value = contFTAR.value + batch.length;
         batch.clear(); // Svuota il batch dopo l'inserimento
         if (controllo == 'ok') {
-          stato[stato.length - 1] = '${contFTAR.value} di ${numFTAR.value}'.obs;
+          // stato[stato.length - 1] = '${contFTAR.value} di ${numFTAR.value}'.obs;
         } else {
           stato[stato.length - 1] = controllo.obs;
         }
@@ -1845,16 +1638,6 @@ class ConnessioneController extends GetxController {
   }
 
   /*BOLLE*/
-
-  Future<void> getNumBlPagam(int mbagid, int tipoConto) async {
-    numBLPG = '0'.obs;
-    var dioClient = dio.Dio();
-    final response = await dioClient
-        .get('${ipAddressApi.value}/infoInitDb/numBLPagam/$tipoConto/$mbagid');
-    logger.i('${ipAddressApi.value}/infoInitDb/numBLPagam/$tipoConto/$mbagid');
-    numBLPG = jsonDecode(response.toString())['tot'].toString().obs;
-  }
-
   Future<void> initBLPagam(int mbagid, int tipoConto) async {
     contBLPG = 0.obs;
     List<PagamentoBolla> batch = [];
@@ -1876,8 +1659,8 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumBlPagam(mbagid, tipoConto);
-      stato.add('${contBLPG.value} di ${numBLPG.value}'.obs);
+      // await getNumBlPagam(mbagid, tipoConto);
+      // stato.add('${contBLPG.value} di ${numBLPG.value}'.obs);
 
       await for (String line in stream) {
         if (line.isNotEmpty) {
@@ -1891,8 +1674,8 @@ class ConnessioneController extends GetxController {
               contBLPG.value = contBLPG.value + batch.length;
               batch.clear();
               if (controllo == 'ok') {
-                stato[stato.length - 1] =
-                    '${contBLPG.value} di ${numBLPG.value}'.obs;
+                // stato[stato.length - 1] =
+                // '${contBLPG.value} di ${numBLPG.value}'.obs;
               } else {
                 stato[stato.length - 1] = controllo.obs;
               }
@@ -1908,7 +1691,7 @@ class ConnessioneController extends GetxController {
         contBLPG.value = contBLPG.value + batch.length;
         batch.clear(); // Svuota il batch dopo l'inserimento
         if (controllo == 'ok') {
-          stato[stato.length - 1] = '${contBLPG.value} di ${numBLPG.value}'.obs;
+          // stato[stato.length - 1] = '${contBLPG.value} di ${numBLPG.value}'.obs;
         } else {
           stato[stato.length - 1] = controllo.obs;
         }
@@ -1917,15 +1700,6 @@ class ConnessioneController extends GetxController {
     } catch (e) {
       debugPrint('Errore durante la richiesta BLPG: $e');
     }
-  }
-
-  Future<void> getNumBlAanagr(int mbagid, int tipoConto) async {
-    numBLAN = '0'.obs;
-    var dioClient = dio.Dio();
-    final response = await dioClient
-        .get('${ipAddressApi.value}/infoInitDb/numBLAnag/$tipoConto/$mbagid');
-    logger.i('${ipAddressApi.value}/infoInitDb/numBLAnag/$tipoConto/$mbagid');
-    numBLAN = jsonDecode(response.toString())['tot'].toString().obs;
   }
 
   Future<void> initBL_Anagr(int mbagid, int tipoConto) async {
@@ -1949,8 +1723,8 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumBlAanagr(mbagid, tipoConto);
-      stato.add('${contBLAN.value} di ${numBLAN.value}'.obs);
+      // await getNumBlAanagr(mbagid, tipoConto);
+      // stato.add('${contBLAN.value} di ${numBLAN.value}'.obs);
 
       await for (String line in stream) {
         if (line.isNotEmpty) {
@@ -1964,8 +1738,8 @@ class ConnessioneController extends GetxController {
               contBLAN.value = contBLAN.value + batch.length;
               batch.clear();
               if (controllo == 'ok') {
-                stato[stato.length - 1] =
-                    '${contBLAN.value} di ${numBLAN.value}'.obs;
+                // stato[stato.length - 1] =
+                //     '${contBLAN.value} di ${numBLAN.value}'.obs;
               } else {
                 stato[stato.length - 1] = controllo.obs;
               }
@@ -1981,7 +1755,7 @@ class ConnessioneController extends GetxController {
         contBLAN.value = contBLAN.value + batch.length;
         batch.clear(); // Svuota il batch dopo l'inserimento
         if (controllo == 'ok') {
-          stato[stato.length - 1] = '${contBLAN.value} di ${numBLAN.value}'.obs;
+          // stato[stato.length - 1] = '${contBLAN.value} di ${numBLAN.value}'.obs;
         } else {
           stato[stato.length - 1] = controllo.obs;
         }
@@ -1990,17 +1764,6 @@ class ConnessioneController extends GetxController {
     } catch (e) {
       debugPrint('Errore durante la richiesta BLAN: $e');
     }
-  }
-
-  Future<void> getNumBlAartic(int mbagid, int tipoConto) async {
-    numBLAR = '0'.obs;
-    var dioClient = dio.Dio();
-    final response = await dioClient
-        .get('${ipAddressApi.value}/infoInitDb/numBLArtic/$tipoConto/$mbagid');
-    logger.i('${ipAddressApi.value}/infoInitDb/numBLArtic/$tipoConto/$mbagid');
-    debugPrint(
-        '${ipAddressApi.value}/infoInitDb/numBLArtic/$tipoConto/$mbagid');
-    numBLAR = jsonDecode(response.toString())['tot'].toString().obs;
   }
 
   Future<void> initBL_Artic(int mbagid, int tipoConto) async {
@@ -2025,8 +1788,8 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      await getNumBlAartic(mbagid, tipoConto);
-      stato.add('${contBLAR.value} di ${numBLAR.value}'.obs);
+      // await getNumBlAartic(mbagid, tipoConto);
+      // stato.add('${contBLAR.value} di ${numBLAR.value}'.obs);
 
       await for (String line in stream) {
         if (line.isNotEmpty) {
@@ -2040,8 +1803,8 @@ class ConnessioneController extends GetxController {
               contBLAR.value = contBLAR.value + batch.length;
               batch.clear();
               if (controllo == 'ok') {
-                stato[stato.length - 1] =
-                    '${contBLAR.value} di ${numBLAR.value}'.obs;
+                // stato[stato.length - 1] =
+                //     '${contBLAR.value} di ${numBLAR.value}'.obs;
               } else {
                 stato[stato.length - 1] = controllo.obs;
               }
@@ -2057,7 +1820,7 @@ class ConnessioneController extends GetxController {
         contBLAR.value = contBLAR.value + batch.length;
         batch.clear(); // Svuota il batch dopo l'inserimento
         if (controllo == 'ok') {
-          stato[stato.length - 1] = '${contBLAR.value} di ${numBLAR.value}'.obs;
+          // stato[stato.length - 1] = '${contBLAR.value} di ${numBLAR.value}'.obs;
         } else {
           stato[stato.length - 1] = controllo.obs;
         }

@@ -31,12 +31,8 @@ import 'package:share_plus/share_plus.dart';
 class DatabaseHelper {
   late Database _database;
 
-  Future<Database> _currentDatabase() async {
-    _database =
-        await openDatabase(p.join(await getDatabasesPath(), 'order_entry.db'),
-            onCreate: (database, version) async {
-      debugPrint('createDatabase');
-      const sqlMGAnaArt = """CREATE TABLE MG_AnaArt(
+  Future<void> _createTables(Database database) async {
+    const sqlMGAnaArt = """CREATE TABLE IF NOT EXISTS MG_AnaArt(
         "MGAA_ID" INTEGER NOT NULL,
         "MGAA_Descr" TEXT,
         "MGAA_Matricola" TEXT,
@@ -48,7 +44,7 @@ class DatabaseHelper {
         "Sconto1" REAL,
         "Sconto2" REAL,
         "Sconto3" REAL);""";
-      const sqlPrezziTV = """ CREATE TABLE "Z_PrezziTV"(
+    const sqlPrezziTV = """ CREATE TABLE IF NOT EXISTS "Z_PrezziTV"(
                           "ZPTV_ID" INTEGER NOT NULL,
                           "ZPTV_MGAA_Id" INTEGER,
                           "ZPTV_MBPC_Id" INTEGER NULL,
@@ -56,7 +52,7 @@ class DatabaseHelper {
                           "ZPTV_Sconto1" FLOAT,
                           "ZPTV_Sconto2" FLOAT,
                           "ZPTV_Sconto3" FLOAT);""";
-      const sqlMBAnagr = """CREATE TABLE "MB_Anagr" (	
+    const sqlMBAnagr = """CREATE TABLE IF NOT EXISTS "MB_Anagr" (	
                             "MBPC_ID"	INTEGER NOT NULL,
                             "MBPC_Conto" TEXT,
                             "MBPC_SottoConto" TEXT,
@@ -77,12 +73,12 @@ class DatabaseHelper {
                             "MBAN_Sconto3" FLOAT,
                             "MBAN_ID"	INTEGER
                           )""";
-      const sqlMBCliForDest = """CREATE TABLE "MB_CliForDest" (
+    const sqlMBCliForDest = """CREATE TABLE IF NOT EXISTS "MB_CliForDest" (
                                 "MBDT_ID" INTEGER NOT NULL,
                                 "MBDT_Destinatario" TEXT,
                                 "MBDT_MBAN_ID" INTEGER
                             )""";
-      const sqlParam = """CREATE TABLE "SP_Param" (	
+    const sqlParam = """CREATE TABLE "SP_Param" (	
               "SPPA_ID"	INTEGER NOT NULL UNIQUE,
               "SPPA_IndirizzoServerAPI" TEXT,
               "SPPA_IndirizzoServerWSK" TEXT,
@@ -111,7 +107,7 @@ class DatabaseHelper {
               "LastUpdate"	INTEGER,
               PRIMARY KEY("SPPA_ID" AUTOINCREMENT)
             ); """;
-      const sqlArtic = """CREATE TABLE "MG_Artic" (
+    const sqlArtic = """CREATE TABLE IF NOT EXISTS "MG_Artic" (
             "MGAA_ID"	INTEGER NOT NULL UNIQUE,
             "MGAA_Matricola"	TEXT,
             "MGAA_Descr"	TEXT,
@@ -120,33 +116,34 @@ class DatabaseHelper {
             "MGAA_Stato" INTEGER,
             "MGAA_Iva" INTEGER,
             "LastUpdate"	INTEGER); """;
-      const sqlMBTipiArticoloVa = """CREATE TABLE "MB_TipiArticoloVA"(
+    const sqlMBTipiArticoloVa =
+        """CREATE TABLE IF NOT EXISTS "MB_TipiArticoloVA"(
             "MBTA_ID" INTEGER NOT NULL UNIQUE,
             "MBTA_Codice" INTEGER,
             "MBTA_Descr" TEXT);""";
-      const sqlFTTipo = """CREATE TABLE "FT_Tipo" (	
+    const sqlFTTipo = """CREATE TABLE IF NOT EXISTS "FT_Tipo" (	
             "FTTI_ID"	INTEGER NOT NULL UNIQUE,
             "FTTI_Descr"	TEXT,
             "FTTI_TipNum"	INTEGER,
             "FTTI_Tipo"	INTEGER,
             "FTTI_FattureInStatistica" INTEGER,
             "FTTI_NaturaFattura" INTEGER); """;
-      const sqlBLTipo = """CREATE TABLE "BL_Tipo" (	
+    const sqlBLTipo = """CREATE TABLE IF NOT EXISTS "BL_Tipo" (	
             "BLTI_ID"	INTEGER NOT NULL UNIQUE,
             "BLTI_Tipo"	INTEGER,
             "BLTI_Descr"	TEXT,
             "BLTI_TipNum"	INTEGER,
             "BLTI_NaturaDDT" INTEGER); """;
-      const sqlOCTipo = """CREATE TABLE "OC_Tipo" (	
+    const sqlOCTipo = """CREATE TABLE IF NOT EXISTS "OC_Tipo" (	
             "OCTI_ID"	INTEGER NOT NULL UNIQUE,
             "OCTI_Tipo"	INTEGER,
             "OCTI_Descr"	TEXT,
             "OCTI_TipNum"	INTEGER); """;
-      const sqlMBAgente = """CREATE TABLE "MB_Agenti" (	
+    const sqlMBAgente = """CREATE TABLE IF NOT EXISTS "MB_Agenti" (	
             "MBAG_ID"	INTEGER NOT NULL UNIQUE,
             "MBAG_MBAN_ID"	INTEGER,
             "MBAN_RagSoc"	TEXT); """;
-      const sqlFTAnagr = """CREATE TABLE IF NOT EXISTS "FT_Anagr" (
+    const sqlFTAnagr = """CREATE TABLE IF NOT EXISTS IF NOT EXISTS "FT_Anagr" (
             "FTAN_ID"	INTEGER NOT NULL UNIQUE,
             "FTAN_AnnoFatt"	INTEGER,
             "FTAN_FTTI_ID" INTEGER,
@@ -162,7 +159,7 @@ class DatabaseHelper {
             "FTAN_Destinat" TEXT,
             "FTAN_Destinaz" TEXT,
             "FTAN_APP_ID" TEXT);""";
-      const sqlFTArtic = """CREATE TABLE "FT_Artic" (
+    const sqlFTArtic = """CREATE TABLE IF NOT EXISTS "FT_Artic" (
             "FTAR_ID"	INTEGER NOT NULL UNIQUE,
             "FTAR_FTAN_ID"	INTEGER NOT NULL,
             "FTAR_NumRiga"	INTEGER,
@@ -178,7 +175,7 @@ class DatabaseHelper {
             "FTAR_DQTA" INTEGER,
             "FTAR_RivalsaIva" INTEGER,
             "FTAR_APP_ID" TEXT);""";
-      const sqlOCAnagr = """CREATE TABLE "OC_Anag" (
+    const sqlOCAnagr = """CREATE TABLE IF NOT EXISTS "OC_Anag" (
             "OCAN_ID"	INTEGER,
             "OCAN_AnnoOrd"	INTEGER,
             "OCAN_OCTI_ID" INTEGER,
@@ -204,7 +201,7 @@ class DatabaseHelper {
             "sync_status" INTEGER DEFAULT 0 
             -- 0=Locale, 1=Inviato, 2=Sincronizzato
             );""";
-      const sqlOCArtic = """CREATE TABLE "OC_Artic" (
+    const sqlOCArtic = """CREATE TABLE IF NOT EXISTS "OC_Artic" (
             "ocar_locale_id" INTEGER PRIMARY KEY AUTOINCREMENT, 
             "OCAR_ID"	INTEGER,
             "OCAR_OCAN_ID"	INTEGER NOT NULL,
@@ -222,15 +219,14 @@ class DatabaseHelper {
             "OCAR_DQTA" REAL,
             "OCAR_EForz" INTEGER,
             "OCAR_APP_ID" TEXT);""";
-      const sqlOcarAppId = """CREATE TABLE "OC_APP_ID" (
+    const sqlOcarAppId = """CREATE TABLE IF NOT EXISTS "OC_APP_ID" (
                       "APPR_ID" INTEGER,
                       "APPT_ID" INTEGER);""";
 
-      const sqlPfId = """CREATE TABLE "PF_APP_ID" (
+    const sqlPfId = """CREATE TABLE IF NOT EXISTS "PF_APP_ID" (
                       "APPT_ID" INTEGER,
                       "APPD_ID" INTEGER);""";
-
-      const sqlBLAnagr = """CREATE TABLE "BL_Anag" (
+    const sqlBLAnagr = """CREATE TABLE IF NOT EXISTS "BL_Anag" (
             "BLAN_ID"	INTEGER NOT NULL,
             "BLAN_BLTI_ID"	INTEGER,
             "BLAN_AnnoBol" INTEGER,
@@ -244,7 +240,7 @@ class DatabaseHelper {
             "BLAN_TotBolla" TEXT,          
             "BLAN_Dest_MBAN_ID" INTEGER,            
             "BLAN_DataCreate" TEXT);""";
-      const sqlBLArtic = """CREATE TABLE "BL_Artic" (
+    const sqlBLArtic = """CREATE TABLE IF NOT EXISTS "BL_Artic" (
             "BLAR_ID"	INTEGER NOT NULL,
             "BLAR_BLAN_ID"	INTEGER NOT NULL,
             "BLAR_NumRiga"	INTEGER,
@@ -257,7 +253,7 @@ class DatabaseHelper {
             "BLAR_TotSconti" REAL,
             "BLAR_ScontiFinali" REAL,
             "BLAR_DQTA" REAL);""";
-      const sqlCAPartite = """CREATE TABLE "CA_Partite" (	
+    const sqlCAPartite = """CREATE TABLE IF NOT EXISTS "CA_Partite" (	
           "CAPA_RIF_FATT" TEXT,
           "CAPA_Id" INTEGER,
           "CAPA_CASP_Stato" INTEGER,
@@ -279,83 +275,130 @@ class DatabaseHelper {
           "CAPA_PagCnt" INTEGER,
           "CAPA_PagAss" INTEGER,
           "CAPA_PagTit" INTEGER);""";
-      const sqlMessaggi = """CREATE TABLE "MessagesToSend" (	
+    const sqlMessaggi = """CREATE TABLE IF NOT EXISTS "MessagesToSend" (	
           "METS_ID" INTEGER,
           "METS_Message" TEXT,
           "METS_DataSave" TEXT,
           PRIMARY KEY("METS_ID" AUTOINCREMENT));""";
-      const sqlIva = """CREATE TABLE "MB_IVA" (
+    const sqlIva = """CREATE TABLE IF NOT EXISTS "MB_IVA" (
         "MBIV_ID" INTEGER NOT NULL UNIQUE,
         "MBIV_IVA" INTEGER,
         "MBIV_Descr" TEXT,
         "MBIV_Perc" INTEGER);""";
-      const sqlTipoPag = """CREATE TABLE "MB_TipoPag" (
+    const sqlTipoPag = """CREATE TABLE IF NOT EXISTS "MB_TipoPag" (
                       "MBTP_ID" INTEGER NOT NULL UNIQUE,
                       "MBTP_Pagamento" INTEGER,
                       "MBTP_Descr" TEXT,
                       "MBTP_Effetto" INTEGER);""";
-      const sqlSolPag = """CREATE TABLE "MB_SolPag" (
+    const sqlSolPag = """CREATE TABLE IF NOT EXISTS "MB_SolPag" (
                 "MBSP_ID" INTEGER NOT NULL UNIQUE,
                 "MBSP_Soluzione" INTEGER,
                 "MBSP_Descr" TEXT,
                 "MBSP_Code" INTEGER);""";
-      const sqlBLPagam = """CREATE TABLE "BL_Pagam" (
+    const sqlBLPagam = """CREATE TABLE IF NOT EXISTS "BL_Pagam" (
               "BLPG_ID" INTEGER NOT NULL,
               "BLPG_BLAN_ID" INTEGER,
               "BLPG_MBTP_ID" INTEGER,
               "BLPG_MBSP_ID" INTEGER);""";
-      const sqlOCPagam = """CREATE TABLE "OC_Pagam" (
+    const sqlOCPagam = """CREATE TABLE IF NOT EXISTS "OC_Pagam" (
                 "OCPG_ID" INTEGER NOT NULL,
                 "OCPG_OCAN_ID" INTEGER,
                 "OCPG_MBTP_ID" INTEGER,
                 "OCPG_MBSP_ID" INTEGER);""";
-      const sqlFTPagam = """CREATE TABLE "FT_Pagam" (
+    const sqlFTPagam = """CREATE TABLE IF NOT EXISTS "FT_Pagam" (
                     "FTPG_ID" INTEGER NOT NULL,
                     "FTPG_FTAN_ID" INTEGER,
                     "FTPG_MBTP_ID" INTEGER,
                     "FTPG_MBSP_ID" INTEGER);""";
-      const sqlMBTipoConto = """CREATE TABLE "MB_TipoConto"(
+    const sqlMBTipoConto = """CREATE TABLE IF NOT EXISTS "MB_TipoConto"(
                     "MBTC_Id" INTEGER NOT NULL,
                     "MBTC_TipoConto" INTEGER,
                     "MBTC_Descr" TEXT,
                     "MBTC_Code" TEXT);""";
 
-      await database.execute(sqlBLPagam);
-      await database.execute(sqlOCPagam);
-      await database.execute(sqlFTPagam);
-      await database.execute(sqlSolPag);
-      await database.execute(sqlTipoPag);
-      await database.execute(sqlIva);
-      await database.execute(sqlMGAnaArt);
-      await database.execute(sqlMBAnagr);
-      await database.execute(sqlMBCliForDest);
-      await database.execute(sqlParam);
-      await database.execute(sqlArtic);
-      await database.execute(sqlFTTipo);
-      await database.execute(sqlBLTipo);
-      await database.execute(sqlOCTipo);
-      await database.execute(sqlFTAnagr);
-      await database.execute(sqlFTArtic);
-      await database.execute(sqlOCAnagr);
-      await database.execute(sqlOCArtic);
-      await database.execute(sqlBLAnagr);
-      await database.execute(sqlBLArtic);
-      await database.execute(sqlCAPartite);
-      await database.execute(sqlMessaggi);
-      await database.execute(sqlMBAgente);
-      await database.execute(sqlMBTipiArticoloVa);
-      await database.execute(sqlMBTipoConto);
-      await database.execute(sqlPrezziTV);
-      await database.execute(sqlOcarAppId);
-      await database.execute(sqlPfId);
-      await database.rawQuery(
-          "INSERT INTO SP_Param (SPPA_IndirizzoServerAPI) VALUES (null) ");
-      await database
-          .rawQuery("INSERT INTO OC_APP_ID (APPR_ID,APPT_ID) VALUES (0,0);");
-      await database
-          .rawQuery("INSERT INTO PF_APP_ID (APPT_ID,APPD_ID) VALUES (0,0);");
-      //await database.rawQuery("UPDATE SP_Param SET SPPA_MBDV_ID=46");
-      //await database.rawQuery("UPDATE SP_Param SET SPPA_MBSC_ID=38");
+    await database.execute(sqlBLPagam);
+    await database.execute(sqlOCPagam);
+    await database.execute(sqlFTPagam);
+    await database.execute(sqlSolPag);
+    await database.execute(sqlTipoPag);
+    await database.execute(sqlIva);
+    await database.execute(sqlMGAnaArt);
+    await database.execute(sqlMBAnagr);
+    await database.execute(sqlMBCliForDest);
+    await database.execute(sqlParam);
+    await database.execute(sqlArtic);
+    await database.execute(sqlFTTipo);
+    await database.execute(sqlBLTipo);
+    await database.execute(sqlOCTipo);
+    await database.execute(sqlFTAnagr);
+    await database.execute(sqlFTArtic);
+    await database.execute(sqlOCAnagr);
+    await database.execute(sqlOCArtic);
+    await database.execute(sqlBLAnagr);
+    await database.execute(sqlBLArtic);
+    await database.execute(sqlCAPartite);
+    await database.execute(sqlMessaggi);
+    await database.execute(sqlMBAgente);
+    await database.execute(sqlMBTipiArticoloVa);
+    await database.execute(sqlMBTipoConto);
+    await database.execute(sqlPrezziTV);
+    await database.execute(sqlOcarAppId);
+    await database.execute(sqlPfId);
+
+    final alterStatements = [
+      'ALTER TABLE "OC_Anag" ADD COLUMN "OCAN_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "BL_Anag" ADD COLUMN "BLAN_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "FT_Anagr" ADD COLUMN "FTAN_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "Z_PrezziTV" ADD COLUMN "ZPTV_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "BL_Pagam" ADD COLUMN "BLPG_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "BL_Tipo" ADD COLUMN "BLTI_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "FT_Pagam" ADD COLUMN "FTPG_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "FT_Tipo" ADD COLUMN "FTTI_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "MB_Agenti" ADD COLUMN "MBAG_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "MB_IVA" ADD COLUMN "MBIV_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "MB_SolPag" ADD COLUMN "MBSP_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "MB_TipiArticoloVA" ADD COLUMN "MBTA_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "MB_TipoConto" ADD COLUMN "MBTC_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "MB_TipoPag" ADD COLUMN "MBTP_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "OC_Pagam" ADD COLUMN "OCPG_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "OC_Tipo" ADD COLUMN "OCTI_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "CA_Partite" ADD COLUMN "CAPA_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "MG_AnaArt" ADD COLUMN "MGAA_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "MB_Anagr" ADD COLUMN "MBAN_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "MB_CliForDest" ADD COLUMN "MBDT_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "FT_Artic" ADD COLUMN "FTAR_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "OC_Artic" ADD COLUMN "OCAR_IS_LastEditDate" BIGINT',
+      'ALTER TABLE "BL_Artic" ADD COLUMN "BLAR_IS_LastEditDate" BIGINT',
+    ];
+
+    for (String statement in alterStatements) {
+      try {
+        await database.execute(statement);
+        debugPrint('Successfully added column: $statement');
+      } catch (e) {
+        // Column likely already exists, which is fine
+        debugPrint('Column likely already exists: $statement - Error: $e');
+      }
+    }
+
+    await database.rawQuery(
+        "INSERT INTO SP_Param (SPPA_IndirizzoServerAPI) SELECT NULL WHERE (SELECT COUNT(*) FROM SP_Param) = 0;");
+    await database.rawQuery(
+        "INSERT OR IGNORE INTO OC_APP_ID (APPR_ID,APPT_ID) SELECT 0,0 WHERE (SELECT COUNT(*) FROM OC_APP_ID) = 0;");
+    await database.rawQuery(
+        "INSERT OR IGNORE INTO PF_APP_ID (APPT_ID,APPD_ID) SELECT 0,0 WHERE (SELECT COUNT(*) FROM PF_APP_ID) = 0;");
+    //await database.rawQuery("UPDATE SP_Param SET SPPA_MBDV_ID=46");
+    //await database.rawQuery("UPDATE SP_Param SET SPPA_MBSC_ID=38");
+  }
+
+  Future<Database> _currentDatabase() async {
+    _database =
+        await openDatabase(p.join(await getDatabasesPath(), 'order_entry.db'),
+            onCreate: (database, version) async {
+      debugPrint('createDatabase');
+      _createTables(database);
+    }, onOpen: (database) async {
+      _createTables(database);
     }, version: 1);
 
     return _database;
