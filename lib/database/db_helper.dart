@@ -33,7 +33,7 @@ class DatabaseHelper {
 
   Future<void> _createTables(Database database) async {
     const sqlMGAnaArt = """CREATE TABLE IF NOT EXISTS MG_AnaArt(
-        "MGAA_ID" INTEGER NOT NULL,
+        "MGAA_ID" INTEGER NOT NULL PRIMARY KEY,
         "MGAA_Descr" TEXT,
         "MGAA_Matricola" TEXT,
         "MGAA_MBIV_ID" INTEGER,
@@ -45,7 +45,7 @@ class DatabaseHelper {
         "Sconto2" REAL,
         "Sconto3" REAL);""";
     const sqlPrezziTV = """ CREATE TABLE IF NOT EXISTS "Z_PrezziTV"(
-                          "ZPTV_ID" INTEGER NOT NULL,
+                          "ZPTV_ID" INTEGER NOT NULL PRIMARY KEY,
                           "ZPTV_MGAA_Id" INTEGER,
                           "ZPTV_MBPC_Id" INTEGER NULL,
                           "ZPTV_Prezzo" FLOAT,
@@ -71,15 +71,15 @@ class DatabaseHelper {
                             "MBAN_Sconto1" FLOAT,
                             "MBAN_Sconto2" FLOAT,
                             "MBAN_Sconto3" FLOAT,
-                            "MBAN_ID"	INTEGER
+                            "MBAN_ID"	INTEGER NOT NULL PRIMARY KEY
                           )""";
     const sqlMBCliForDest = """CREATE TABLE IF NOT EXISTS "MB_CliForDest" (
-                                "MBDT_ID" INTEGER NOT NULL,
+                                "MBDT_ID" INTEGER NOT NULL PRIMARY KEY,
                                 "MBDT_Destinatario" TEXT,
                                 "MBDT_MBAN_ID" INTEGER
                             )""";
     const sqlParam = """CREATE TABLE "SP_Param" (	
-              "SPPA_ID"	INTEGER NOT NULL UNIQUE,
+              "SPPA_ID"	INTEGER NOT NULL PRIMARY KEY,
               "SPPA_IndirizzoServerAPI" TEXT,
               "SPPA_IndirizzoServerWSK" TEXT,
               "SPPA_IMEI" TEXT,
@@ -108,7 +108,7 @@ class DatabaseHelper {
               PRIMARY KEY("SPPA_ID" AUTOINCREMENT)
             ); """;
     const sqlArtic = """CREATE TABLE IF NOT EXISTS "MG_Artic" (
-            "MGAA_ID"	INTEGER NOT NULL UNIQUE,
+            "MGAA_ID"	INTEGER NOT NULL PRIMARY KEY,
             "MGAA_Matricola"	TEXT,
             "MGAA_Descr"	TEXT,
             "MGAA_Classe"	TEXT,
@@ -118,33 +118,33 @@ class DatabaseHelper {
             "LastUpdate"	INTEGER); """;
     const sqlMBTipiArticoloVa =
         """CREATE TABLE IF NOT EXISTS "MB_TipiArticoloVA"(
-            "MBTA_ID" INTEGER NOT NULL UNIQUE,
+            "MBTA_ID" INTEGER NOT NULL PRIMARY KEY,
             "MBTA_Codice" INTEGER,
             "MBTA_Descr" TEXT);""";
     const sqlFTTipo = """CREATE TABLE IF NOT EXISTS "FT_Tipo" (	
-            "FTTI_ID"	INTEGER NOT NULL UNIQUE,
+            "FTTI_ID"	INTEGER NOT NULL PRIMARY KEY,
             "FTTI_Descr"	TEXT,
             "FTTI_TipNum"	INTEGER,
             "FTTI_Tipo"	INTEGER,
             "FTTI_FattureInStatistica" INTEGER,
             "FTTI_NaturaFattura" INTEGER); """;
     const sqlBLTipo = """CREATE TABLE IF NOT EXISTS "BL_Tipo" (	
-            "BLTI_ID"	INTEGER NOT NULL UNIQUE,
+            "BLTI_ID"	INTEGER NOT NULL PRIMARY KEY,
             "BLTI_Tipo"	INTEGER,
             "BLTI_Descr"	TEXT,
             "BLTI_TipNum"	INTEGER,
             "BLTI_NaturaDDT" INTEGER); """;
     const sqlOCTipo = """CREATE TABLE IF NOT EXISTS "OC_Tipo" (	
-            "OCTI_ID"	INTEGER NOT NULL UNIQUE,
+            "OCTI_ID"	INTEGER NOT NULL PRIMARY KEY,
             "OCTI_Tipo"	INTEGER,
             "OCTI_Descr"	TEXT,
             "OCTI_TipNum"	INTEGER); """;
     const sqlMBAgente = """CREATE TABLE IF NOT EXISTS "MB_Agenti" (	
-            "MBAG_ID"	INTEGER NOT NULL UNIQUE,
+            "MBAG_ID"	INTEGER NOT NULL PRIMARY KEY,
             "MBAG_MBAN_ID"	INTEGER,
             "MBAN_RagSoc"	TEXT); """;
     const sqlFTAnagr = """CREATE TABLE IF NOT EXISTS IF NOT EXISTS "FT_Anagr" (
-            "FTAN_ID"	INTEGER NOT NULL UNIQUE,
+            "FTAN_ID"	INTEGER NOT NULL PRIMARY KEY,
             "FTAN_AnnoFatt"	INTEGER,
             "FTAN_FTTI_ID" INTEGER,
             "FTAN_NumFatt"	TEXT, 
@@ -160,7 +160,7 @@ class DatabaseHelper {
             "FTAN_Destinaz" TEXT,
             "FTAN_APP_ID" TEXT);""";
     const sqlFTArtic = """CREATE TABLE IF NOT EXISTS "FT_Artic" (
-            "FTAR_ID"	INTEGER NOT NULL UNIQUE,
+            "FTAR_ID"	INTEGER NOT NULL PRIMARY KEY,
             "FTAR_FTAN_ID"	INTEGER NOT NULL,
             "FTAR_NumRiga"	INTEGER,
             "FTAR_MGAA_ID" INTEGER,
@@ -374,10 +374,8 @@ class DatabaseHelper {
     for (String statement in alterStatements) {
       try {
         await database.execute(statement);
-        debugPrint('Successfully added column: $statement');
       } catch (e) {
         // Column likely already exists, which is fine
-        debugPrint('Column likely already exists: $statement - Error: $e');
       }
     }
 
@@ -445,19 +443,34 @@ class DatabaseHelper {
 
   Future<void> resetDatabase() async {
     Database db = await _currentDatabase();
-    await db.rawQuery("DELETE FROM MB_Anagr");
-    await db.rawQuery("DELETE FROM BL_Artic");
-    await db.rawQuery("DELETE FROM BL_Anag");
-    await db.rawQuery("DELETE FROM OC_Artic");
-    await db.rawQuery("DELETE FROM OC_Anag");
-    await db.rawQuery("DELETE FROM FT_Artic");
-    await db.rawQuery("DELETE FROM FT_Anagr");
-    await db.rawQuery("DELETE FROM SP_Param");
-    await db.rawQuery("DELETE FROM MG_Artic");
-    await db.rawQuery("DELETE FROM FT_Tipo");
-    await db.rawQuery("DELETE FROM BL_Tipo");
-    await db.rawQuery("DELETE FROM OC_Tipo");
-    //db.close();
+
+    // Get all table names
+    List<Map<String, dynamic>> tables = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
+
+    // Drop each table
+    for (Map<String, dynamic> table in tables) {
+      String tableName = table['name'];
+      await db.rawQuery("DROP TABLE IF EXISTS $tableName");
+    }
+
+    _createTables(db);
+  }
+
+  Future<void> deleteDataTables() async {
+    Database db = await _currentDatabase();
+
+    // Get all table names
+    List<Map<String, dynamic>> tables = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> 'SP_Param' AND name <> 'OC_APP_ID' AND name <> 'PF_APP_ID'");
+
+    // Drop each table
+    for (Map<String, dynamic> table in tables) {
+      String tableName = table['name'];
+      await db.rawQuery("DROP TABLE IF EXISTS $tableName");
+    }
+
+    _createTables(db);
   }
 
   Future<void> clearMB_Anagr() async {
@@ -555,26 +568,6 @@ class DatabaseHelper {
     await db.rawQuery("DELETE FROM MB_Agenti");
   }
 
-  Future<void> mod() async {
-    Database db = await _currentDatabase();
-    await db.rawQuery("""CREATE TABLE "OC_Artic" (
-            "OCAR_ID"	INTEGER NOT NULL UNIQUE,
-            "OCAR_OCAN_ID"	INTEGER NOT NULL,
-            "OCAR_NumRiga"	INTEGER,
-            "OCAR_MBTA_Codice" INTEGER,
-            "OCAR_MGAA_ID" INTEGER,
-            "OCAR_Quantita" REAL,
-            "OCAR_MBUM_Codice" TEXT,
-            "OCAR_Prezzo" REAL,
-            "OCAR_DescrArt" TEXT,
-            "OCAR_TotSconti" REAL,
-            "OCAR_ScontiFinali" REAL,
-            "OCAR_PrezzoListino" REAL,
-            "OCAR_DQTA" REAL,
-            "OCAR_EForz" INTEGER,
-            "OCAR_APP_ID" TEXT);""");
-  }
-
   Future<void> test() async {
     Database db = await _currentDatabase();
 
@@ -588,7 +581,7 @@ class DatabaseHelper {
     Database db = await _currentDatabase();
     try {
       int val = await db.rawUpdate(query, values);
-      debugPrint('returm value from RawUpdate: $val');
+      debugPrint('return value from RawUpdate: $val');
       return val;
     } catch (e) {
       debugPrint('errore funzione RawUpdate: $e');
@@ -1033,7 +1026,7 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         await txn.insert('MG_AnaArt', prodotto.toJson(),
-            conflictAlgorithm: ConflictAlgorithm.ignore);
+            conflictAlgorithm: ConflictAlgorithm.replace);
         return 'ok';
       } catch (e) {
         return 'err: $e';
@@ -1046,7 +1039,8 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         for (Prodotto prodotto in prodotti) {
-          await txn.insert('MG_AnaArt', prodotto.toJson());
+          await txn.insert('MG_AnaArt', prodotto.toJson(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
         return 'ok';
       } catch (e) {
@@ -1062,7 +1056,7 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         await txn.insert('CA_Partite', partita.toJson(),
-            conflictAlgorithm: ConflictAlgorithm.ignore);
+            conflictAlgorithm: ConflictAlgorithm.replace);
         return 'ok';
       } catch (e) {
         return 'err: $e';
@@ -1075,7 +1069,8 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         for (Partita partita in partite) {
-          await txn.insert('CA_Partite', partita.toJson());
+          await txn.insert('CA_Partite', partita.toJson(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
         return 'ok';
       } catch (e) {
@@ -1102,7 +1097,8 @@ class DatabaseHelper {
 
     return await db.transaction((txn) async {
       try {
-        await txn.insert('MB_Anagr', cliente.toJson());
+        await txn.insert('MB_Anagr', cliente.toJson(),
+            conflictAlgorithm: ConflictAlgorithm.replace);
         return 'ok';
       } catch (e) {
         return 'err: $e';
@@ -1115,7 +1111,8 @@ class DatabaseHelper {
 
     return await db.transaction((txn) async {
       try {
-        await txn.insert('MB_CliForDest', dest.toJson());
+        await txn.insert('MB_CliForDest', dest.toJson(),
+            conflictAlgorithm: ConflictAlgorithm.replace);
         return 'ok';
       } catch (e) {
         return 'err: $e';
@@ -1165,7 +1162,8 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         for (Cliente cliente in clienti) {
-          await txn.insert('MB_Anagr', cliente.toJson());
+          await txn.insert('MB_Anagr', cliente.toJson(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
         return 'ok';
       } catch (e) {
@@ -1180,7 +1178,8 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         for (MbCliForDest dest in destinazioni) {
-          await txn.insert('MB_CliForDest', dest.toJson());
+          await txn.insert('MB_CliForDest', dest.toJson(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
         return 'ok';
       } catch (e) {
@@ -1310,7 +1309,7 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         await txn.insert('BL_Pagam', pagamento.toJson(),
-            conflictAlgorithm: ConflictAlgorithm.ignore);
+            conflictAlgorithm: ConflictAlgorithm.replace);
         return 'ok';
       } catch (e) {
         return 'err: $e';
@@ -1323,7 +1322,8 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         for (PagamentoBolla pagamento in pagamenti) {
-          await txn.insert('BL_Pagam', pagamento.toJson());
+          await txn.insert('BL_Pagam', pagamento.toJson(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
         return 'ok';
       } catch (e) {
@@ -1338,7 +1338,7 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         await txn.insert('OC_Pagam', pagamento.toJson(),
-            conflictAlgorithm: ConflictAlgorithm.ignore);
+            conflictAlgorithm: ConflictAlgorithm.replace);
         return 'ok';
       } catch (e) {
         return 'err: $e';
@@ -1351,7 +1351,8 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         for (PagamentoOrdine pagamento in pagamenti) {
-          await txn.insert('OC_Pagam', pagamento.toJson());
+          await txn.insert('OC_Pagam', pagamento.toJson(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
         return 'ok';
       } catch (e) {
@@ -1366,7 +1367,7 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         await txn.insert('FT_Pagam', pagamento.toJson(),
-            conflictAlgorithm: ConflictAlgorithm.ignore);
+            conflictAlgorithm: ConflictAlgorithm.replace);
         return 'ok';
       } catch (e) {
         return 'err: $e';
@@ -1379,7 +1380,8 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         for (PagamentoFattura pagamento in pagamenti) {
-          await txn.insert('FT_Pagam', pagamento.toJson());
+          await txn.insert('FT_Pagam', pagamento.toJson(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
         return 'ok';
       } catch (e) {
@@ -1394,7 +1396,8 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         for (PrezziTV prezzo in prezzi) {
-          await txn.insert('Z_PrezziTV', prezzo.toJson());
+          await txn.insert('Z_PrezziTV', prezzo.toJson(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
         return 'ok';
       } catch (e) {
@@ -1411,7 +1414,7 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         await txn.insert('MB_TipoPag', pagamento.toJson(),
-            conflictAlgorithm: ConflictAlgorithm.ignore);
+            conflictAlgorithm: ConflictAlgorithm.replace);
         return 'ok';
       } catch (e) {
         return 'err: $e';
@@ -1424,7 +1427,8 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         for (TipoPagamento pagamento in pagamenti) {
-          await txn.insert('MB_TipoPag', pagamento.toJson());
+          await txn.insert('MB_TipoPag', pagamento.toJson(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
         return 'ok';
       } catch (e) {
@@ -1438,7 +1442,8 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         for (TipoArticolo pagamento in pagamenti) {
-          await txn.insert('MB_TipiArticoloVA', pagamento.toJson());
+          await txn.insert('MB_TipiArticoloVA', pagamento.toJson(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
         return 'ok';
       } catch (e) {
@@ -1453,7 +1458,7 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         await txn.insert('MB_SolPag', soluzione.toJson(),
-            conflictAlgorithm: ConflictAlgorithm.ignore);
+            conflictAlgorithm: ConflictAlgorithm.replace);
         return 'ok';
       } catch (e) {
         return 'err: $e';
@@ -1466,7 +1471,8 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         for (SoluzionePagamento soluzione in soluzioni) {
-          await txn.insert('MB_SolPag', soluzione.toJson());
+          await txn.insert('MB_SolPag', soluzione.toJson(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
         return 'ok';
       } catch (e) {
@@ -1479,7 +1485,8 @@ class DatabaseHelper {
     Database db = await _currentDatabase();
     return await db.transaction((txn) async {
       try {
-        await txn.insert('MB_IVA', iv.toJson());
+        await txn.insert('MB_IVA', iv.toJson(),
+            conflictAlgorithm: ConflictAlgorithm.replace);
         return 'ok';
       } catch (e) {
         return 'err: $e';
@@ -1492,7 +1499,8 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         for (Iva iva in ive) {
-          await txn.insert('MB_IVA', iva.toJson());
+          await txn.insert('MB_IVA', iva.toJson(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
         return 'ok';
       } catch (e) {
@@ -1505,7 +1513,8 @@ class DatabaseHelper {
     Database db = await _currentDatabase();
     return await db.transaction((txn) async {
       try {
-        await txn.insert('FT_Tipo', tipo.toJson());
+        await txn.insert('FT_Tipo', tipo.toJson(),
+            conflictAlgorithm: ConflictAlgorithm.replace);
         return 'ok';
       } catch (e) {
         return 'err: $e';
@@ -1518,7 +1527,8 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         for (TipoFattura tipo in tipi) {
-          await txn.insert('FT_Tipo', tipo.toJson());
+          await txn.insert('FT_Tipo', tipo.toJson(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
         return 'ok';
       } catch (e) {
@@ -1531,7 +1541,8 @@ class DatabaseHelper {
     Database db = await _currentDatabase();
     return await db.transaction((txn) async {
       try {
-        await txn.insert('MB_Agenti', ag.toJson());
+        await txn.insert('MB_Agenti', ag.toJson(),
+            conflictAlgorithm: ConflictAlgorithm.replace);
         return 'ok';
       } catch (e) {
         return 'err: $e';
@@ -1552,7 +1563,8 @@ class DatabaseHelper {
     Database db = await _currentDatabase();
     return await db.transaction((txn) async {
       try {
-        await txn.insert('MB_TipoConto', tipo.toJson());
+        await txn.insert('MB_TipoConto', tipo.toJson(),
+            conflictAlgorithm: ConflictAlgorithm.replace);
         return 'ok';
       } catch (e) {
         return 'err: $e';
@@ -1565,7 +1577,8 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         for (TipoConto tipo in tipi) {
-          await txn.insert('MB_TipoConto', tipo.toJson());
+          await txn.insert('MB_TipoConto', tipo.toJson(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
         return 'ok';
       } catch (e) {
@@ -1578,7 +1591,8 @@ class DatabaseHelper {
     Database db = await _currentDatabase();
     return await db.transaction((txn) async {
       try {
-        await txn.insert('BL_Tipo', tipo.toJson());
+        await txn.insert('BL_Tipo', tipo.toJson(),
+            conflictAlgorithm: ConflictAlgorithm.replace);
         return 'ok';
       } catch (e) {
         return 'err: $e';
@@ -1591,7 +1605,8 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         for (TipoBolla tipo in tipi) {
-          await txn.insert('BL_Tipo', tipo.toJson());
+          await txn.insert('BL_Tipo', tipo.toJson(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
         return 'ok';
       } catch (e) {
@@ -1604,7 +1619,8 @@ class DatabaseHelper {
     Database db = await _currentDatabase();
     return await db.transaction((txn) async {
       try {
-        await txn.insert('OC_Tipo', tipo.toJson());
+        await txn.insert('OC_Tipo', tipo.toJson(),
+            conflictAlgorithm: ConflictAlgorithm.replace);
         return 'ok';
       } catch (e) {
         return 'err: $e';
@@ -1617,7 +1633,8 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         for (TipoOrdine tipo in tipi) {
-          await txn.insert('BL_Tipo', tipo.toJson());
+          await txn.insert('BL_Tipo', tipo.toJson(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
         return 'ok';
       } catch (e) {
@@ -1639,7 +1656,8 @@ class DatabaseHelper {
     Database db = await _currentDatabase();
     return await db.transaction((txn) async {
       try {
-        await txn.insert('FT_Anagr', testata.toJson());
+        await txn.insert('FT_Anagr', testata.toJson(),
+            conflictAlgorithm: ConflictAlgorithm.replace);
         return 'ok';
       } catch (e) {
         return 'err: $e';
@@ -1652,7 +1670,8 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         for (TestataFattura testata in testate) {
-          await txn.insert('FT_Anagr', testata.toJson());
+          await txn.insert('FT_Anagr', testata.toJson(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
         return 'ok';
       } catch (e) {
@@ -1665,7 +1684,8 @@ class DatabaseHelper {
     Database db = await _currentDatabase();
     return await db.transaction((txn) async {
       try {
-        await txn.insert('FT_Artic', riga.toJson());
+        await txn.insert('FT_Artic', riga.toJson(),
+            conflictAlgorithm: ConflictAlgorithm.replace);
         return 'ok';
       } catch (e) {
         return 'err: $e';
@@ -1678,7 +1698,8 @@ class DatabaseHelper {
     return await db.transaction((txn) async {
       try {
         for (RigaFattura riga in righe) {
-          await txn.insert('FT_Artic', riga.toJson());
+          await txn.insert('FT_Artic', riga.toJson(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
         return 'ok';
       } catch (e) {
@@ -2459,5 +2480,166 @@ WHERE FTAN_MBPC_ID=$mbpcId AND substr(FTAN_DataIns,1,4)>='${DateTime.now().year 
     );
 
     return {'header': testataMaps.first, 'lines': righeMaps};
+  }
+
+  Future<int> getMaxOCANLastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(OCAN_IS_LastEditDate), 0) as max_date FROM OC_Anag");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxOCARLastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(OCAR_IS_LastEditDate), 0) as max_date FROM OC_Artic");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxOCPGLastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(OCPG_IS_LastEditDate), 0) as max_date FROM OC_Pagam");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxOCTILastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(OCTI_IS_LastEditDate), 0) as max_date FROM OC_Tipo");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxFTANLastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(FTAN_IS_LastEditDate), 0) as max_date FROM FT_Anagr");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxFTARLastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(FTAR_IS_LastEditDate), 0) as max_date FROM FT_Artic");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxFTPGLastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(FTPG_IS_LastEditDate), 0) as max_date FROM FT_Pagam");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxFTTILastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(FTTI_IS_LastEditDate), 0) as max_date FROM FT_Tipo");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxBLANLastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(BLAN_IS_LastEditDate), 0) as max_date FROM BL_Anag");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxBLARLastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(BLAR_IS_LastEditDate), 0) as max_date FROM BL_Artic");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxBLPGLastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(BLPG_IS_LastEditDate), 0) as max_date FROM BL_Pagam");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxBLTILastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(BLTI_IS_LastEditDate), 0) as max_date FROM BL_Tipo");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxMBANLastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(MBAN_IS_LastEditDate), 0) as max_date FROM MB_Anagr");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxMBDTLastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(MBDT_IS_LastEditDate), 0) as max_date FROM MB_CliForDest");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxMBAGLastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(MBAG_IS_LastEditDate), 0) as max_date FROM MB_Agenti");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxMBIVLastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(MBIV_IS_LastEditDate), 0) as max_date FROM MB_IVA");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxMBSPLastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(MBSP_IS_LastEditDate), 0) as max_date FROM MB_SolPag");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxMBTALastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(MBTA_IS_LastEditDate), 0) as max_date FROM MB_TipiArticoloVA");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxMBTCLastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(MBTC_IS_LastEditDate), 0) as max_date FROM MB_TipoConto");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxMBTPLastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(MBTP_IS_LastEditDate), 0) as max_date FROM MB_TipoPag");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxMGAALastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(MGAA_IS_LastEditDate), 0) as max_date FROM MG_AnaArt");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxZPTVLastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(ZPTV_IS_LastEditDate), 0) as max_date FROM Z_PrezziTV");
+    return map[0]["max_date"] ?? 0;
+  }
+
+  Future<int> getMaxCAPALastEditDate() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map = await db.rawQuery(
+        "SELECT COALESCE(MAX(CAPA_IS_LastEditDate), 0) as max_date FROM CA_Partite");
+    return map[0]["max_date"] ?? 0;
   }
 }
