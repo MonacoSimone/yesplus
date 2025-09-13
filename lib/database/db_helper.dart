@@ -751,6 +751,24 @@ class DatabaseHelper {
     return map[0]["MBAN_Indirizzo"] ?? '';
   }
 
+  Future<Map<String, String?>> getIMEIAndPassword() async {
+    Database db = await _currentDatabase();
+    final List<Map<String, dynamic>> map =
+        await db.rawQuery("SELECT SPPA_IMEI, SPPA_Password FROM SP_Param");
+
+    if (map.isNotEmpty) {
+      return {
+        'imei': map[0]["SPPA_IMEI"],
+        'password': map[0]["SPPA_Password"],
+      };
+    } else {
+      return {
+        'imei': null,
+        'password': null,
+      };
+    }
+  }
+
   Future<int> getMBAGID() async {
     Database db = await _currentDatabase();
     final List<Map<String, dynamic>> map =

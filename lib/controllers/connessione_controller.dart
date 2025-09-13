@@ -359,13 +359,30 @@ class ConnessioneController extends GetxController {
   }
 
   /*ANAGRAFICHE*/
-
-  Future<void> initMB_Anag(int mbagid, int tipoConto) async {
+  Future<void> initMB_Anag() async {
     contMBAN = 0.obs;
     List<Cliente> batch = [];
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/mbanag/$tipoConto/$mbagid';
+
     try {
+      // Get IMEI and password
+      final credentials = await DatabaseHelper().getIMEIAndPassword();
+      final String imei = credentials['imei'] ?? '';
+      final String password = credentials['password'] ?? '';
+
+      if (imei.isEmpty) {
+        debugPrint('Errore: Codice Univoco non impostato');
+        stato.add('Errore: Codice Univoco non impostato'.obs);
+        return;
+      }
+
+      // Get timestamp from the appropriate getMax function for MB_Anagr table
+      final int timestamp = await DatabaseHelper().getMaxMBANLastEditDate();
+
+      // Build the new API URL with IMEI, password, and timestamp
+      var url =
+          '${ipAddressApi.value}/initdbclient/mbanag/$imei/$password/$timestamp';
+
       dio.Response<dio.ResponseBody> response =
           await dioClient.get<dio.ResponseBody>(
         url,
@@ -379,10 +396,6 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      // await getNumMbAnag(mbagid, tipoConto);
-
-      // stato.add('${contMBAN.value} di ${numMBAN.value}'.obs);
-
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -394,10 +407,7 @@ class ConnessioneController extends GetxController {
                   await DatabaseHelper().initDbAnagClientiBatch(batch);
               contMBAN.value = contMBAN.value + batch.length;
               batch.clear();
-              if (controllo == 'ok') {
-                // stato[stato.length - 1] =
-                //     '${contMBAN.value} di ${numMBAN.value}'.obs;
-              } else {
+              if (controllo != 'ok') {
                 stato[stato.length - 1] = controllo.obs;
               }
             }
@@ -412,9 +422,7 @@ class ConnessioneController extends GetxController {
         String controllo = await DatabaseHelper().initDbAnagClientiBatch(batch);
         contMBAN.value = contMBAN.value + batch.length;
         batch.clear(); // Svuota il batch dopo l'inserimento
-        if (controllo == 'ok') {
-          // stato[stato.length - 1] = '${contMBAN.value} di ${numMBAN.value}'.obs;
-        } else {
+        if (controllo != 'ok') {
           stato[stato.length - 1] = controllo.obs;
         }
       }
@@ -425,13 +433,30 @@ class ConnessioneController extends GetxController {
   }
 
   /*DESTINAZIONE ANAGRAFICHE */
-  Future<void> initMBCliForDest(int mbagid, int tipoConto) async {
+  Future<void> initMBCliForDest() async {
     contCFDT = 0.obs;
     List<MbCliForDest> batch = [];
     var dioClient = dio.Dio();
+
+    // Get IMEI and password
+    final credentials = await DatabaseHelper().getIMEIAndPassword();
+    final imei = credentials['imei'] ?? '';
+    final password = credentials['password'] ?? '';
+
+    // Validate IMEI
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp for MB_CliForDest table
+    final timestamp = await DatabaseHelper().getMaxMBDTLastEditDate();
+
     var url =
-        '${ipAddressApi.value}/initdbclient/mbclifordest/$tipoConto/$mbagid';
+        '${ipAddressApi.value}/initdbclient/mbclifordest/$imei/$password/$timestamp';
     print(url);
+
     try {
       dio.Response<dio.ResponseBody> response =
           await dioClient.get<dio.ResponseBody>(
@@ -446,10 +471,6 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      // await getNumMbCliForDest(mbagid, tipoConto);
-
-      // stato.add('${contCFDT.value} di ${numCFDT.value}'.obs);
-
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -461,31 +482,26 @@ class ConnessioneController extends GetxController {
                   await DatabaseHelper().initDbMBCliForDestBatch(batch);
               contCFDT.value = contCFDT.value + batch.length;
               batch.clear();
-              if (controllo == 'ok') {
-                // stato[stato.length - 1] =
-                //     '${contCFDT.value} di ${numCFDT.value}'.obs;
-              } else {
+              if (controllo != 'ok') {
                 stato[stato.length - 1] = controllo.obs;
               }
             }
-            // Fai qualcosa con l'oggetto Cliente
           } catch (e) {
             debugPrint('Errore di parsing JSON: $e');
-            // Gestisci l'errore di parsing
           }
         }
       }
+
       if (batch.isNotEmpty) {
         String controllo =
             await DatabaseHelper().initDbMBCliForDestBatch(batch);
         contCFDT.value = contCFDT.value + batch.length;
-        batch.clear(); // Svuota il batch dopo l'inserimento
-        if (controllo == 'ok') {
-          // stato[stato.length - 1] = '${contCFDT.value} di ${numCFDT.value}'.obs;
-        } else {
+        batch.clear();
+        if (controllo != 'ok') {
           stato[stato.length - 1] = controllo.obs;
         }
       }
+
       debugPrint('Elaborazione completata MBDT');
     } catch (e) {
       debugPrint('Errore durante la richiesta: $e');
@@ -493,11 +509,27 @@ class ConnessioneController extends GetxController {
   }
 
   /*SCONTI ANAGRAFICHE */
-  Future<void> initSconti(int mbagid, int tipoConto) async {
+  Future<void> initSconti() async {
     contSconti = 0.obs;
+
+    // Get IMEI and password from database
+    final credentials = await DatabaseHelper().getIMEIAndPassword();
+    final imei = credentials['imei'] ?? '';
+    final password = credentials['password'] ?? '';
+
+    // Check if IMEI is valid
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp from database
+    final timestamp = await DatabaseHelper().getMaxMBANLastEditDate();
+
     var dioClient = dio.Dio();
     var url =
-        '${ipAddressApi.value}/initdbclient/mbanag/sconti/$tipoConto/$mbagid';
+        '${ipAddressApi.value}/initdbclient/mbanag/sconti/$imei/$password/$timestamp';
     debugPrint(url);
 
     try {
@@ -513,10 +545,6 @@ class ConnessioneController extends GetxController {
           .transform(StreamTransformer<Uint8List, String>.fromBind((stream) =>
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
-
-      // await getNumSconti(mbagid, tipoConto);
-
-      // stato.add('${contSconti.value} di ${numSconti.value}'.obs);
 
       List<Sconto> batch = [];
       int batchSize = 100; // Set a batch size as needed
@@ -533,10 +561,7 @@ class ConnessioneController extends GetxController {
                   await DatabaseHelper().updateDbScontiBatch(batch);
               contSconti.value = contSconti.value + batch.length;
               batch.clear();
-              if (controllo == 'ok') {
-                // stato[stato.length - 1] =
-                // '${contSconti.value} di ${numSconti.value}'.obs;
-              } else {
+              if (controllo != 'ok') {
                 stato[stato.length - 1] = controllo.obs;
               }
               batch.clear();
@@ -551,10 +576,7 @@ class ConnessioneController extends GetxController {
         String controllo = await DatabaseHelper().updateDbScontiBatch(batch);
         contSconti.value = contSconti.value + batch.length;
         batch.clear();
-        if (controllo == 'ok') {
-          // stato[stato.length - 1] =
-          //     '${contSconti.value} di ${numSconti.value}'.obs;
-        } else {
+        if (controllo != 'ok') {
           stato[stato.length - 1] = controllo.obs;
         }
       }
@@ -569,7 +591,25 @@ class ConnessioneController extends GetxController {
   Future<void> initZprezziTv() async {
     contZprezzi = 0.obs;
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/zprezzitv';
+
+    // Get IMEI and password
+    final credentials = await DatabaseHelper().getIMEIAndPassword();
+    final imei = credentials['imei'] ?? '';
+    final password = credentials['password'] ?? '';
+
+    // Validate IMEI
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp
+    final timestamp = await DatabaseHelper().getMaxZPTVLastEditDate();
+
+    // Construct new URL
+    var url =
+        '${ipAddressApi.value}/initdbclient/zprezzitv/$imei/$password/$timestamp';
     debugPrint(url);
 
     try {
@@ -586,12 +626,8 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      // await getNumZPrezziTv();
-
-      // stato.add('${contZprezzi.value} di ${numprezzi.value}'.obs);
-
       List<PrezziTV> batch = [];
-      int batchSize = 100; // Set a batch size as needed
+      int batchSize = 100;
 
       await for (String line in stream) {
         if (line.isNotEmpty) {
@@ -606,10 +642,7 @@ class ConnessioneController extends GetxController {
                   await DatabaseHelper().initDbPrezziTVBatch(batch);
               contZprezzi.value = contZprezzi.value + batch.length;
               batch.clear();
-              if (controllo == 'ok') {
-                // stato[stato.length - 1] =
-                //     '${contZprezzi.value} di ${numprezzi.value}'.obs;
-              } else {
+              if (controllo != 'ok') {
                 stato[stato.length - 1] = controllo.obs;
               }
               batch.clear();
@@ -624,10 +657,7 @@ class ConnessioneController extends GetxController {
         String controllo = await DatabaseHelper().initDbPrezziTVBatch(batch);
         contZprezzi.value = contZprezzi.value + batch.length;
         batch.clear();
-        if (controllo == 'ok') {
-          // stato[stato.length - 1] =
-          //     '${contZprezzi.value} di ${numprezzi.value}'.obs;
-        } else {
+        if (controllo != 'ok') {
           stato[stato.length - 1] = controllo.obs;
         }
       }
@@ -643,8 +673,27 @@ class ConnessioneController extends GetxController {
     contMGAA = 0.obs;
     List<Prodotto> batch = [];
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/mganaart/';
+
+    // Get IMEI and password
+    final credentials = await DatabaseHelper().getIMEIAndPassword();
+    final imei = credentials['imei'] ?? '';
+    final password = credentials['password'] ?? '';
+
+    // Check if IMEI is valid
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp
+    final timestamp = await DatabaseHelper().getMaxMGAALastEditDate();
+
+    // Build URL with new format
+    var url =
+        '${ipAddressApi.value}/initdbclient/mganaart/$imei/$password/$timestamp';
     debugPrint(url);
+
     try {
       dio.Response<dio.ResponseBody> response =
           await dioClient.get<dio.ResponseBody>(
@@ -659,9 +708,6 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      // await getNumArticoli();
-
-      // stato.add('${contMGAA.value} di ${numMGAA.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -673,27 +719,20 @@ class ConnessioneController extends GetxController {
                   await DatabaseHelper().initDbArticoliBatch(batch);
               contMGAA.value = contMGAA.value + batch.length;
               batch.clear();
-              if (controllo == 'ok') {
-                // stato[stato.length - 1] =
-                //     '${contMGAA.value} di ${numMGAA.value}'.obs;
-              } else {
+              if (controllo != 'ok') {
                 stato[stato.length - 1] = controllo.obs;
               }
             }
-            // Fai qualcosa con l'oggetto Cliente
           } catch (e) {
             debugPrint('Errore di parsing JSON: $e');
-            // Gestisci l'errore di parsing
           }
         }
       }
       if (batch.isNotEmpty) {
         String controllo = await DatabaseHelper().initDbArticoliBatch(batch);
         contMGAA.value = contMGAA.value + batch.length;
-        batch.clear(); // Svuota il batch dopo l'inserimento
-        if (controllo == 'ok') {
-          // stato[stato.length - 1] = '${contMGAA.value} di ${numMGAA.value}'.obs;
-        } else {
+        batch.clear();
+        if (controllo != 'ok') {
           stato[stato.length - 1] = controllo.obs;
         }
       }
@@ -704,11 +743,27 @@ class ConnessioneController extends GetxController {
   }
 
   /*PARTITE*/
-  Future<void> initCA_Partite(int mbagid, int tipoConto) async {
+  Future<void> initCA_Partite() async {
+    // Get IMEI and password
+    final credentials = await DatabaseHelper().getIMEIAndPassword();
+    final imei = credentials['imei'] ?? '';
+    final password = credentials['password'] ?? '';
+
+    // Validate IMEI
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp
+    final timestamp = await DatabaseHelper().getMaxCAPALastEditDate();
+
     contCAPA = 0.obs;
     List<Partita> batch = [];
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/capartite/$tipoConto/$mbagid';
+    var url =
+        '${ipAddressApi.value}/initdbclient/capartite/$imei/$password/$timestamp';
     logger.i(url);
     try {
       dio.Response<dio.ResponseBody> response =
@@ -724,9 +779,6 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      // await getNumCAPartite(mbagid, tipoConto);
-
-      // stato.add('${contCAPA.value} di ${numCAPA.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -738,27 +790,20 @@ class ConnessioneController extends GetxController {
                   await DatabaseHelper().initDbPartiteBatch(batch);
               contCAPA.value = contCAPA.value + batch.length;
               batch.clear();
-              if (controllo == 'ok') {
-                // stato[stato.length - 1] =
-                //     '${contCAPA.value} di ${numCAPA.value}'.obs;
-              } else {
+              if (controllo != 'ok') {
                 stato[stato.length - 1] = controllo.obs;
               }
             }
-            // Fai qualcosa con l'oggetto Cliente
           } catch (e) {
             debugPrint('Errore di parsing JSON: $e');
-            // Gestisci l'errore di parsing
           }
         }
       }
       if (batch.isNotEmpty) {
         String controllo = await DatabaseHelper().initDbPartiteBatch(batch);
         contCAPA.value = contCAPA.value + batch.length;
-        batch.clear(); // Svuota il batch dopo l'inserimento
-        if (controllo == 'ok') {
-          // stato[stato.length - 1] = '${contCAPA.value} di ${numCAPA.value}'.obs;
-        } else {
+        batch.clear();
+        if (controllo != 'ok') {
           stato[stato.length - 1] = controllo.obs;
         }
       }
@@ -773,8 +818,27 @@ class ConnessioneController extends GetxController {
     contMBTC = 0.obs;
     List<TipoConto> batch = [];
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/mbtipoconto/';
+
+    // Get IMEI and password from database
+    final credentials = await DatabaseHelper().getIMEIAndPassword();
+    final imei = credentials['imei'] ?? '';
+    final password = credentials['password'] ?? '';
+
+    // Check if IMEI is valid
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp for this table
+    final timestamp = await DatabaseHelper().getMaxMBTCLastEditDate();
+
+    // Build the URL with the new format
+    var url =
+        '${ipAddressApi.value}/initdbclient/mbtipoconto/$imei/$password/$timestamp';
     logger.i(url);
+
     try {
       dio.Response<dio.ResponseBody> response =
           await dioClient.get<dio.ResponseBody>(
@@ -789,9 +853,6 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      // await getNumTipoConto();
-
-      // stato.add('${contMBTC.value} di ${numMBTC.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -803,27 +864,20 @@ class ConnessioneController extends GetxController {
                   await DatabaseHelper().initMBTipoContoBatch(batch);
               contMBTC.value = contMBTC.value + batch.length;
               batch.clear();
-              if (controllo == 'ok') {
-                // stato[stato.length - 1] =
-                //     '${contMBTC.value} di ${numMBTC.value}'.obs;
-              } else {
+              if (controllo != 'ok') {
                 stato[stato.length - 1] = controllo.obs;
               }
             }
-            // Fai qualcosa con l'oggetto Cliente
           } catch (e) {
             debugPrint('Errore di parsing JSON: $e');
-            // Gestisci l'errore di parsing
           }
         }
       }
       if (batch.isNotEmpty) {
         String controllo = await DatabaseHelper().initMBTipoContoBatch(batch);
         contMBTC.value = contMBTC.value + batch.length;
-        batch.clear(); // Svuota il batch dopo l'inserimento
-        if (controllo == 'ok') {
-          // stato[stato.length - 1] = '${contMBTC.value} di ${numMBTC.value}'.obs;
-        } else {
+        batch.clear();
+        if (controllo != 'ok') {
           stato[stato.length - 1] = controllo.obs;
         }
       }
@@ -837,7 +891,25 @@ class ConnessioneController extends GetxController {
     contMBTP = 0.obs;
     List<TipoPagamento> batch = [];
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/tipopag/';
+
+    // Get IMEI and password
+    final credentials = await DatabaseHelper().getIMEIAndPassword();
+    final imei = credentials['imei'] ?? '';
+    final password = credentials['password'] ?? '';
+
+    // Validate IMEI
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp
+    final timestamp = await DatabaseHelper().getMaxMBTPLastEditDate();
+
+    var url =
+        '${ipAddressApi.value}/initdbclient/tipopag/$imei/$password/$timestamp';
+
     try {
       dio.Response<dio.ResponseBody> response =
           await dioClient.get<dio.ResponseBody>(
@@ -852,9 +924,6 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      // await getNumTipoPag();
-
-      // stato.add('${contMBTP.value} di ${numMBTP.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -866,27 +935,20 @@ class ConnessioneController extends GetxController {
                   await DatabaseHelper().initDbTipoPagBatch(batch);
               contMBTP.value = contMBTP.value + batch.length;
               batch.clear();
-              if (controllo == 'ok') {
-                // stato[stato.length - 1] =
-                //     '${contMBTP.value} di ${numMBTP.value}'.obs;
-              } else {
+              if (controllo != 'ok') {
                 stato[stato.length - 1] = controllo.obs;
               }
             }
-            // Fai qualcosa con l'oggetto Cliente
           } catch (e) {
             debugPrint('Errore di parsing JSON: $e');
-            // Gestisci l'errore di parsing
           }
         }
       }
       if (batch.isNotEmpty) {
         String controllo = await DatabaseHelper().initDbTipoPagBatch(batch);
         contMBTP.value = contMBTP.value + batch.length;
-        batch.clear(); // Svuota il batch dopo l'inserimento
-        if (controllo == 'ok') {
-          // stato[stato.length - 1] = '${contMBTP.value} di ${numMBTP.value}'.obs;
-        } else {
+        batch.clear();
+        if (controllo != 'ok') {
           stato[stato.length - 1] = controllo.obs;
         }
       }
@@ -900,7 +962,27 @@ class ConnessioneController extends GetxController {
     contMBTA = 0.obs;
     List<TipoArticolo> batch = [];
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/mbta/';
+
+    // Get IMEI and password
+    Map<String, String?> credentials =
+        await DatabaseHelper().getIMEIAndPassword();
+    String imei = credentials['imei'] ?? '';
+    String password = credentials['password'] ?? '';
+
+    // Validate IMEI
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp
+    int timestamp = await DatabaseHelper().getMaxMBTALastEditDate();
+
+    // Construct new URL
+    var url =
+        '${ipAddressApi.value}/initdbclient/mbta/$imei/$password/$timestamp';
+
     try {
       dio.Response<dio.ResponseBody> response =
           await dioClient.get<dio.ResponseBody>(
@@ -915,9 +997,6 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      // await getNumTipiArticolo();
-
-      // stato.add('${contMBTA.value} di ${numMBTA.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -929,17 +1008,12 @@ class ConnessioneController extends GetxController {
                   await DatabaseHelper().initDbTipoArticoliBatch(batch);
               contMBTA.value = contMBTA.value + batch.length;
               batch.clear();
-              if (controllo == 'ok') {
-                // stato[stato.length - 1] =
-                //     '${contMBTA.value} di ${numMBTA.value}'.obs;
-              } else {
+              if (controllo != 'ok') {
                 stato[stato.length - 1] = controllo.obs;
               }
             }
-            // Fai qualcosa con l'oggetto Cliente
           } catch (e) {
             debugPrint('Errore di parsing JSON: $e');
-            // Gestisci l'errore di parsing
           }
         }
       }
@@ -947,10 +1021,8 @@ class ConnessioneController extends GetxController {
         String controllo =
             await DatabaseHelper().initDbTipoArticoliBatch(batch);
         contMBTA.value = contMBTA.value + batch.length;
-        batch.clear(); // Svuota il batch dopo l'inserimento
-        if (controllo == 'ok') {
-          // stato[stato.length - 1] = '${contMBTA.value} di ${numMBTA.value}'.obs;
-        } else {
+        batch.clear();
+        if (controllo != 'ok') {
           stato[stato.length - 1] = controllo.obs;
         }
       }
@@ -958,13 +1030,31 @@ class ConnessioneController extends GetxController {
     } catch (e) {
       debugPrint('Errore durante la richiesta MBTA: $e');
     }
-  } //----
+  }
 
   Future<void> initMBSolPag() async {
     contMBSP = 0.obs;
     List<SoluzionePagamento> batch = [];
+
+    // Get IMEI and password using the helper function
+    final credentials = await DatabaseHelper().getIMEIAndPassword();
+    final imei = credentials['imei'] ?? '';
+    final password = credentials['password'] ?? '';
+
+    // Check if IMEI is valid
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp for incremental sync
+    final timestamp = await DatabaseHelper().getMaxMBSPLastEditDate();
+
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/solpag/';
+    var url =
+        '${ipAddressApi.value}/initdbclient/solpag/$imei/$password/$timestamp';
+
     try {
       dio.Response<dio.ResponseBody> response =
           await dioClient.get<dio.ResponseBody>(
@@ -979,9 +1069,6 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      // await getNumSolPag();
-
-      // stato.add('${contMBSP.value} di ${numMBSP.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -993,30 +1080,25 @@ class ConnessioneController extends GetxController {
                   await DatabaseHelper().initDbSolPagBatch(batch);
               contMBSP.value = contMBSP.value + batch.length;
               batch.clear();
-              if (controllo == 'ok') {
-                // stato[stato.length - 1] =
-                // '${contMBSP.value} di ${numMBSP.value}'.obs;
-              } else {
+              if (controllo != 'ok') {
                 stato[stato.length - 1] = controllo.obs;
               }
             }
-            // Fai qualcosa con l'oggetto Cliente
           } catch (e) {
             debugPrint('Errore di parsing JSON: $e');
-            // Gestisci l'errore di parsing
           }
         }
       }
+
       if (batch.isNotEmpty) {
         String controllo = await DatabaseHelper().initDbSolPagBatch(batch);
         contMBSP.value = contMBSP.value + batch.length;
-        batch.clear(); // Svuota il batch dopo l'inserimento
-        if (controllo == 'ok') {
-          // stato[stato.length - 1] = '${contMBSP.value} di ${numMBSP.value}'.obs;
-        } else {
+        batch.clear();
+        if (controllo != 'ok') {
           stato[stato.length - 1] = controllo.obs;
         }
       }
+
       debugPrint('Elaborazione completata MBSP');
     } catch (e) {
       debugPrint('Errore durante la richiesta MBSP: $e');
@@ -1025,9 +1107,26 @@ class ConnessioneController extends GetxController {
 
   Future<void> initMBage() async {
     contMBAG = 1.obs;
-    /*RICHIESTA TIPO BOLLE */
+
+    // Get IMEI and password
+    final credentials = await DatabaseHelper().getIMEIAndPassword();
+    final imei = credentials['imei'] ?? '';
+    final password = credentials['password'] ?? '';
+
+    // Validate IMEI
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp
+    final timestamp = await DatabaseHelper().getMaxMBAGLastEditDate();
+
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/mbage';
+    var url =
+        '${ipAddressApi.value}/initdbclient/mbage/$imei/$password/$timestamp';
+
     try {
       dio.Response<dio.ResponseBody> response =
           await dioClient.get<dio.ResponseBody>(
@@ -1042,8 +1141,6 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      // await getNumMbAge();
-      // stato.add('${contMBAG.value} di ${numMBAG.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -1051,14 +1148,12 @@ class ConnessioneController extends GetxController {
             var ag = Agente.fromJson(jsonData);
             String controllo = await DatabaseHelper().initMBAge(ag);
             if (controllo == 'ok') {
-              // stato[stato.length - 1] =
-              // '${contMBAG.value++} di ${numMBAG.value}'.obs;
+              // Success handling if needed
             } else {
               stato[stato.length - 1] = controllo.obs;
             }
           } catch (e) {
             debugPrint('Errore di parsing JSON MBAG: $e');
-            // Gestisci l'errore di parsing
           }
         }
       }
@@ -1071,8 +1166,25 @@ class ConnessioneController extends GetxController {
   Future<void> initMBiva() async {
     contMBIV = 1.obs;
 
+    // Get IMEI and password using the existing method
+    final credentials = await DatabaseHelper().getIMEIAndPassword();
+    final String imei = credentials['imei'] ?? '';
+    final String password = credentials['password'] ?? '';
+
+    // Validate IMEI
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp from database
+    final int timestamp = await DatabaseHelper().getMaxMBIVLastEditDate();
+
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/mbiva';
+    var url =
+        '${ipAddressApi.value}/initdbclient/mbiva/$imei/$password/$timestamp';
+
     try {
       dio.Response<dio.ResponseBody> response =
           await dioClient.get<dio.ResponseBody>(
@@ -1087,23 +1199,17 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      // await getNumMBIva();
-      // stato.add('${contMBIV.value} di ${numMBIV.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
             var jsonData = json.decode(line);
             var iva = Iva.fromJson(jsonData);
             String controllo = await DatabaseHelper().initMBIva(iva);
-            if (controllo == 'ok') {
-              // stato[stato.length - 1] =
-              //     '${contMBIV.value++} di ${numMBIV.value}'.obs;
-            } else {
+            if (controllo != 'ok') {
               stato[stato.length - 1] = controllo.obs;
             }
           } catch (e) {
             debugPrint('Errore di parsing JSON MBIV: $e');
-            // Gestisci l'errore di parsing
           }
         }
       }
@@ -1115,9 +1221,26 @@ class ConnessioneController extends GetxController {
 
   Future<void> initBL_Tipo() async {
     contBLTI = 1.obs;
-    /*RICHIESTA TIPO BOLLE */
+
+    // Get IMEI and password
+    final credentials = await DatabaseHelper().getIMEIAndPassword();
+    final imei = credentials['imei'] ?? '';
+    final password = credentials['password'] ?? '';
+
+    // Validate IMEI
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp
+    final timestamp = await DatabaseHelper().getMaxBLTILastEditDate();
+
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/bltipo';
+    var url =
+        '${ipAddressApi.value}/initdbclient/bltipo/$imei/$password/$timestamp';
+
     try {
       dio.Response<dio.ResponseBody> response =
           await dioClient.get<dio.ResponseBody>(
@@ -1132,23 +1255,17 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      // await getNumBlTipo();
-      // stato.add('${contBLTI.value} di ${numBLTI.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
             var jsonData = json.decode(line);
             var tipoBolla = TipoBolla.fromJson(jsonData);
             String controllo = await DatabaseHelper().initBLTipo(tipoBolla);
-            if (controllo == 'ok') {
-              // stato[stato.length - 1] =
-              //     '${contBLTI.value++} di ${numBLTI.value}'.obs;
-            } else {
+            if (controllo != 'ok') {
               stato[stato.length - 1] = controllo.obs;
             }
           } catch (e) {
             debugPrint('Errore di parsing JSON BLTI: $e');
-            // Gestisci l'errore di parsing
           }
         }
       }
@@ -1159,10 +1276,26 @@ class ConnessioneController extends GetxController {
   }
 
   Future<void> initFT_Tipo() async {
+    // Get IMEI and password
+    final credentials = await DatabaseHelper().getIMEIAndPassword();
+    final imei = credentials['imei'] ?? '';
+    final password = credentials['password'] ?? '';
+
+    // Check if IMEI is valid
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp
+    final timestamp = await DatabaseHelper().getMaxFTTILastEditDate();
+
     contFTTI = 1.obs;
-    /*RICHIESTA TIPO FATTURE */
+
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/fttipo';
+    var url =
+        '${ipAddressApi.value}/initdbclient/fttipo/$imei/$password/$timestamp';
     try {
       dio.Response<dio.ResponseBody> response =
           await dioClient.get<dio.ResponseBody>(
@@ -1177,8 +1310,6 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      // await getNumFtTipo();
-      // stato.add('${contFTTI.value} di ${numFTTI.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -1186,14 +1317,11 @@ class ConnessioneController extends GetxController {
             var tipoFattura = TipoFattura.fromJson(jsonData);
             String controllo = await DatabaseHelper().initFTTipo(tipoFattura);
             if (controllo == 'ok') {
-              // stato[stato.length - 1] =
-              //     '${contFTTI.value++} di ${numFTTI.value}'.obs;
             } else {
               stato[stato.length - 1] = controllo.obs;
             }
           } catch (e) {
             debugPrint('Errore di parsing JSON FTTI: $e');
-            // Gestisci l'errore di parsing
           }
         }
       }
@@ -1204,10 +1332,27 @@ class ConnessioneController extends GetxController {
   }
 
   Future<void> initOC_Tipo() async {
-    /*RICHIESTA TIPO ORDINE */
     contOCTI = 1.obs;
+
+    // Get IMEI and password
+    final credentials = await DatabaseHelper().getIMEIAndPassword();
+    final imei = credentials['imei'] ?? '';
+    final password = credentials['password'] ?? '';
+
+    // Validate IMEI
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp
+    final timestamp = await DatabaseHelper().getMaxOCTILastEditDate();
+
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/octipo';
+    var url =
+        '${ipAddressApi.value}/initdbclient/octipo/$imei/$password/$timestamp';
+
     try {
       dio.Response<dio.ResponseBody> response =
           await dioClient.get<dio.ResponseBody>(
@@ -1222,23 +1367,17 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      // await getNumOcTipo();
-      // stato.add('${contOCTI.value} di ${numOCTI.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
             var jsonData = json.decode(line);
             var tipoOrdine = TipoOrdine.fromJson(jsonData);
             String controllo = await DatabaseHelper().initOCTipo(tipoOrdine);
-            if (controllo == 'ok') {
-              // stato[stato.length - 1] =
-              // '${contOCTI.value++} di ${numOCTI.value}'.obs;
-            } else {
+            if (controllo != 'ok') {
               stato[stato.length - 1] = controllo.obs;
             }
           } catch (e) {
             debugPrint('Errore di parsing JSON OCTI: $e');
-            // Gestisci l'errore di parsing
           }
         }
       }
@@ -1249,13 +1388,27 @@ class ConnessioneController extends GetxController {
   }
 
   /*ORDINI*/
+  Future<void> initOCPagam() async {
+    // Get IMEI and password
+    final credentials = await DatabaseHelper().getIMEIAndPassword();
+    final imei = credentials['imei'] ?? '';
+    final password = credentials['password'] ?? '';
 
-  Future<void> initOCPagam(int mbagid, int tipoConto) async {
-    /*RICHIESTA TESTATE ORDINI */
+    // Validate IMEI
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp
+    final timestamp = await DatabaseHelper().getMaxOCPGLastEditDate();
+
     List<PagamentoOrdine> batch = [];
     contOCPG = 0.obs;
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/ocpagam/$tipoConto/$mbagid';
+    var url =
+        '${ipAddressApi.value}/initdbclient/ocpagam/$imei/$password/$timestamp';
     logger.i(url);
     try {
       dio.Response<dio.ResponseBody> response =
@@ -1270,9 +1423,6 @@ class ConnessioneController extends GetxController {
           .transform(StreamTransformer<Uint8List, String>.fromBind((stream) =>
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
-
-      // await getNumOCPagam(mbagid, tipoConto);
-      // stato.add('${contOCPG.value} di ${numOCPG.value}'.obs);
 
       await for (String line in stream) {
         if (line.isNotEmpty) {
@@ -1285,26 +1435,20 @@ class ConnessioneController extends GetxController {
                   await DatabaseHelper().initDbOCPagametiBatch(batch);
               contOCPG.value = contOCPG.value + batch.length;
               batch.clear();
-              if (controllo == 'ok') {
-                // stato[stato.length - 1] =
-                //     '${contOCPG.value} di ${numOCPG.value}'.obs;
-              } else {
+              if (controllo != 'ok') {
                 stato[stato.length - 1] = controllo.obs;
               }
             }
           } catch (e) {
             debugPrint('Errore di parsing JSON OCPG: $e');
-            // Gestisci l'errore di parsing
           }
         }
       }
       if (batch.isNotEmpty) {
         String controllo = await DatabaseHelper().initDbOCPagametiBatch(batch);
         contOCPG.value = contOCPG.value + batch.length;
-        batch.clear(); // Svuota il batch dopo l'inserimento
-        if (controllo == 'ok') {
-          // stato[stato.length - 1] = '${contOCPG.value} di ${numOCPG.value}'.obs;
-        } else {
+        batch.clear();
+        if (controllo != 'ok') {
           stato[stato.length - 1] = controllo.obs;
         }
       }
@@ -1314,13 +1458,31 @@ class ConnessioneController extends GetxController {
     }
   }
 
-  Future<void> initOC_Anagr(int ocTipo, int tipoConto) async {
+  Future<void> initOC_Anagr() async {
     /*RICHIESTA TESTATE ORDINI */
     List<TestataOrdine> batch = [];
     contOCAN = 0.obs;
+
+    // Get IMEI and password from database
+    final credentials = await DatabaseHelper().getIMEIAndPassword();
+    final imei = credentials['imei'] ?? '';
+    final password = credentials['password'] ?? '';
+
+    // Validate IMEI
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp for incremental sync
+    final timestamp = await DatabaseHelper().getMaxOCANLastEditDate();
+
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/ocanag/$tipoConto/$ocTipo';
+    var url =
+        '${ipAddressApi.value}/initdbclient/ocanag/$imei/$password/$timestamp';
     logger.i(url);
+
     try {
       dio.Response<dio.ResponseBody> response =
           await dioClient.get<dio.ResponseBody>(
@@ -1334,9 +1496,6 @@ class ConnessioneController extends GetxController {
           .transform(StreamTransformer<Uint8List, String>.fromBind((stream) =>
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
-
-      // await getNumOcAnag(ocTipo, tipoConto);
-      // stato.add('${contOCAN.value} di ${numOCAN.value}'.obs);
 
       await for (String line in stream) {
         if (line.isNotEmpty) {
@@ -1349,42 +1508,55 @@ class ConnessioneController extends GetxController {
                   await DatabaseHelper().initTestataOrdiniBatch(batch);
               contOCAN.value = contOCAN.value + batch.length;
               batch.clear();
-              if (controllo == 'ok') {
-                // stato[stato.length - 1] =
-                // '${contOCAN.value} di ${numOCAN.value}'.obs;
-              } else {
+              if (controllo != 'ok') {
                 stato[stato.length - 1] = controllo.obs;
               }
             }
           } catch (e) {
             debugPrint('Errore di parsing JSON OCAN: $e');
-            // Gestisci l'errore di parsing
           }
         }
       }
+
       if (batch.isNotEmpty) {
         String controllo = await DatabaseHelper().initTestataOrdiniBatch(batch);
         contOCAN.value = contOCAN.value + batch.length;
-        batch.clear(); // Svuota il batch dopo l'inserimento
-        if (controllo == 'ok') {
-          // stato[stato.length - 1] = '${contOCAN.value} di ${numOCAN.value}'.obs;
-        } else {
+        batch.clear();
+        if (controllo != 'ok') {
           stato[stato.length - 1] = controllo.obs;
         }
       }
+
       debugPrint('Elaborazione completata OCAN');
     } catch (e) {
       debugPrint('Errore durante la richiesta OCAN: $e');
     }
   }
 
-  Future<void> initOC_Arti(int ocTipo, int tipoConto) async {
-    /*RICHIESTA RIGHE ORDINI */
+  Future<void> initOC_Arti() async {
     List<RigaOrdine> batch = [];
     contOCAR = 0.obs;
+
+    // Get IMEI and password from database
+    final credentials = await DatabaseHelper().getIMEIAndPassword();
+    final String imei = credentials['imei'] ?? '';
+    final String password = credentials['password'] ?? '';
+
+    // Validate IMEI
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp for incremental sync
+    final int timestamp = await DatabaseHelper().getMaxOCARLastEditDate();
+
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/ocartic/$tipoConto/$ocTipo';
+    var url =
+        '${ipAddressApi.value}/initdbclient/ocartic/$imei/$password/$timestamp';
     logger.i(url);
+
     try {
       dio.Response<dio.ResponseBody> response =
           await dioClient.get<dio.ResponseBody>(
@@ -1398,9 +1570,6 @@ class ConnessioneController extends GetxController {
           .transform(StreamTransformer<Uint8List, String>.fromBind((stream) =>
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
-
-      // await getNumOcArtic(ocTipo, tipoConto);
-      // stato.add('${contOCAR.value} di ${numOCAR.value}'.obs);
 
       await for (String line in stream) {
         if (line.isNotEmpty) {
@@ -1412,31 +1581,27 @@ class ConnessioneController extends GetxController {
               String controllo =
                   await DatabaseHelper().initRigheOrdineBatch(batch);
               contOCAR.value = contOCAR.value + batch.length;
-              batch.clear(); // Svuota il batch dopo l'inserimento
-              if (controllo == 'ok') {
-                // stato[stato.length - 1] =
-                //     '${contOCAR.value} di ${numOCAR.value}'.obs;
-              } else {
+              batch.clear();
+              if (controllo != 'ok') {
                 stato[stato.length - 1] = controllo.obs;
               }
             }
           } catch (e) {
             debugPrint('Errore di parsing JSON OCAR: $e');
-            // Gestisci l'errore di parsing
           }
         }
       }
-      // Assicurati di inserire qualsiasi riga rimasta nel batch
+
+      // Insert any remaining items in the batch
       if (batch.isNotEmpty) {
         String controllo = await DatabaseHelper().initRigheOrdineBatch(batch);
         contOCAR.value = contOCAR.value + batch.length;
-        batch.clear(); // Svuota il batch dopo l'inserimento
-        if (controllo == 'ok') {
-          // stato[stato.length - 1] = '${contOCAR.value} di ${numOCAR.value}'.obs;
-        } else {
+        batch.clear();
+        if (controllo != 'ok') {
           stato[stato.length - 1] = controllo.obs;
         }
       }
+
       debugPrint('Elaborazione completata OCAR');
     } catch (e) {
       debugPrint('Errore durante la richiesta OCAR: $e');
@@ -1444,12 +1609,29 @@ class ConnessioneController extends GetxController {
   }
 
   /*FATTURE*/
-  Future<void> initFTPagam(int mbagid, int tipoConto) async {
+  Future<void> initFTPagam() async {
     /*RICHIESTA TESTATE FATTURE */
+
+    // Get IMEI and password
+    final credentials = await DatabaseHelper().getIMEIAndPassword();
+    final imei = credentials['imei'] ?? '';
+    final password = credentials['password'] ?? '';
+
+    // Validate IMEI
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp
+    final timestamp = await DatabaseHelper().getMaxFTPGLastEditDate();
+
     List<PagamentoFattura> batch = [];
     contFTPG = 0.obs;
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/ftpagam/$tipoConto/$mbagid';
+    var url =
+        '${ipAddressApi.value}/initdbclient/ftpagam/$imei/$password/$timestamp';
     logger.i(url);
     try {
       dio.Response<dio.ResponseBody> response =
@@ -1464,9 +1646,6 @@ class ConnessioneController extends GetxController {
           .transform(StreamTransformer<Uint8List, String>.fromBind((stream) =>
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
-
-      // await getNumFTPagam(mbagid, tipoConto);
-      // stato.add('${contFTPG.value} di ${numFTPG.value}'.obs);
 
       await for (String line in stream) {
         if (line.isNotEmpty) {
@@ -1479,26 +1658,20 @@ class ConnessioneController extends GetxController {
                   await DatabaseHelper().initDbFTPagametiBatch(batch);
               contFTPG.value = contFTPG.value + batch.length;
               batch.clear();
-              if (controllo == 'ok') {
-                // stato[stato.length - 1] =
-                //     '${contFTPG.value} di ${numFTPG.value}'.obs;
-              } else {
+              if (controllo != 'ok') {
                 stato[stato.length - 1] = controllo.obs;
               }
             }
           } catch (e) {
             debugPrint('Errore di parsing JSON FTPG: $e');
-            // Gestisci l'errore di parsing
           }
         }
       }
       if (batch.isNotEmpty) {
         String controllo = await DatabaseHelper().initDbFTPagametiBatch(batch);
         contFTPG.value = contFTPG.value + batch.length;
-        batch.clear(); // Svuota il batch dopo l'inserimento
-        if (controllo == 'ok') {
-          // stato[stato.length - 1] = '${contFTPG.value} di ${numFTPG.value}'.obs;
-        } else {
+        batch.clear();
+        if (controllo != 'ok') {
           stato[stato.length - 1] = controllo.obs;
         }
       }
@@ -1508,13 +1681,31 @@ class ConnessioneController extends GetxController {
     }
   }
 
-  Future<void> initFT_Anagr(int mbagid, int tipoConto) async {
-    /*RICHIESTA TESTATE FATTURE */
+  Future<void> initFT_Anagr() async {
     List<TestataFattura> batch = [];
     contFTAN = 0.obs;
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/ftanagr/$tipoConto/$mbagid';
+
+    // Get IMEI and password
+    Map<String, String?> credentials =
+        await DatabaseHelper().getIMEIAndPassword();
+    String imei = credentials['imei'] ?? '';
+    String password = credentials['password'] ?? '';
+
+    // Validate IMEI
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp
+    int timestamp = await DatabaseHelper().getMaxFTANLastEditDate();
+
+    var url =
+        '${ipAddressApi.value}/initdbclient/ftanagr/$imei/$password/$timestamp';
     logger.i(url);
+
     try {
       dio.Response<dio.ResponseBody> response =
           await dioClient.get<dio.ResponseBody>(
@@ -1528,9 +1719,6 @@ class ConnessioneController extends GetxController {
           .transform(StreamTransformer<Uint8List, String>.fromBind((stream) =>
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
-
-      // await getNumFtAanagr(mbagid, tipoConto);
-      // stato.add('${contFTAN.value} di ${numFTAN.value}'.obs);
 
       await for (String line in stream) {
         if (line.isNotEmpty) {
@@ -1543,16 +1731,12 @@ class ConnessioneController extends GetxController {
                   await DatabaseHelper().initTestataFatturaBatch(batch);
               contFTAN.value = contFTAN.value + batch.length;
               batch.clear();
-              if (controllo == 'ok') {
-                // stato[stato.length - 1] =
-                //     '${contFTAN.value} di ${numFTAN.value}'.obs;
-              } else {
+              if (controllo != 'ok') {
                 stato[stato.length - 1] = controllo.obs;
               }
             }
           } catch (e) {
             debugPrint('Errore di parsing JSON FTAN: $e');
-            // Gestisci l'errore di parsing
           }
         }
       }
@@ -1560,10 +1744,8 @@ class ConnessioneController extends GetxController {
         String controllo =
             await DatabaseHelper().initTestataFatturaBatch(batch);
         contFTAN.value = contFTAN.value + batch.length;
-        batch.clear(); // Svuota il batch dopo l'inserimento
-        if (controllo == 'ok') {
-          // stato[stato.length - 1] = '${contFTAN.value} di ${numFTAN.value}'.obs;
-        } else {
+        batch.clear();
+        if (controllo != 'ok') {
           stato[stato.length - 1] = controllo.obs;
         }
       }
@@ -1573,12 +1755,29 @@ class ConnessioneController extends GetxController {
     }
   }
 
-  Future<void> initFT_Artic(int mbagid, int tipoConto) async {
+  Future<void> initFT_Artic() async {
     /*RICHIESTA RIGHE FATTURE */
+
+    // Get IMEI and password
+    final credentials = await DatabaseHelper().getIMEIAndPassword();
+    final String imei = credentials['imei'] ?? '';
+    final String password = credentials['password'] ?? '';
+
+    // Validate IMEI
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp
+    final int timestamp = await DatabaseHelper().getMaxFTARLastEditDate();
+
     List<RigaFattura> batch = [];
     contFTAR = 0.obs;
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/ftartic/$tipoConto/$mbagid';
+    var url =
+        '${ipAddressApi.value}/initdbclient/ftartic/$imei/$password/$timestamp';
     logger.i(url);
     try {
       dio.Response<dio.ResponseBody> response =
@@ -1594,9 +1793,6 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      // await getNumFTAR(mbagid, tipoConto);
-
-      // stato.add('${contFTAR.value} di ${numFTAR.value}'.obs);
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -1608,26 +1804,20 @@ class ConnessioneController extends GetxController {
                   await DatabaseHelper().initRigaFatturaBatch(batch);
               contFTAR.value = contFTAR.value + batch.length;
               batch.clear();
-              if (controllo == 'ok') {
-                // stato[stato.length - 1] =
-                //     '${contFTAR.value} di ${numFTAR.value}'.obs;
-              } else {
+              if (controllo != 'ok') {
                 stato[stato.length - 1] = controllo.obs;
               }
             }
           } catch (e) {
             debugPrint('Errore di parsing JSON FTAR: $e');
-            // Gestisci l'errore di parsing
           }
         }
       }
       if (batch.isNotEmpty) {
         String controllo = await DatabaseHelper().initRigaFatturaBatch(batch);
         contFTAR.value = contFTAR.value + batch.length;
-        batch.clear(); // Svuota il batch dopo l'inserimento
-        if (controllo == 'ok') {
-          // stato[stato.length - 1] = '${contFTAR.value} di ${numFTAR.value}'.obs;
-        } else {
+        batch.clear();
+        if (controllo != 'ok') {
           stato[stato.length - 1] = controllo.obs;
         }
       }
@@ -1638,13 +1828,30 @@ class ConnessioneController extends GetxController {
   }
 
   /*BOLLE*/
-  Future<void> initBLPagam(int mbagid, int tipoConto) async {
+  Future<void> initBLPagam() async {
     contBLPG = 0.obs;
     List<PagamentoBolla> batch = [];
-    /*RICHIESTA TESTATE BOLLE */
+
+    // Get IMEI and password from database
+    final credentials = await DatabaseHelper().getIMEIAndPassword();
+    final imei = credentials['imei'] ?? '';
+    final password = credentials['password'] ?? '';
+
+    // Check if IMEI is valid
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp for BL_Pagam table
+    final timestamp = await DatabaseHelper().getMaxBLPGLastEditDate();
+
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/blpagam/$tipoConto/$mbagid';
+    var url =
+        '${ipAddressApi.value}/initdbclient/blpagam/$imei/$password/$timestamp';
     logger.i(url);
+
     try {
       dio.Response<dio.ResponseBody> response =
           await dioClient.get<dio.ResponseBody>(
@@ -1658,9 +1865,6 @@ class ConnessioneController extends GetxController {
           .transform(StreamTransformer<Uint8List, String>.fromBind((stream) =>
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
-
-      // await getNumBlPagam(mbagid, tipoConto);
-      // stato.add('${contBLPG.value} di ${numBLPG.value}'.obs);
 
       await for (String line in stream) {
         if (line.isNotEmpty) {
@@ -1673,26 +1877,20 @@ class ConnessioneController extends GetxController {
                   await DatabaseHelper().initDbBlPagamentiBatch(batch);
               contBLPG.value = contBLPG.value + batch.length;
               batch.clear();
-              if (controllo == 'ok') {
-                // stato[stato.length - 1] =
-                // '${contBLPG.value} di ${numBLPG.value}'.obs;
-              } else {
+              if (controllo != 'ok') {
                 stato[stato.length - 1] = controllo.obs;
               }
             }
           } catch (e) {
             debugPrint('Errore di parsing JSON BLPG: $e');
-            // Gestisci l'errore di parsing
           }
         }
       }
       if (batch.isNotEmpty) {
         String controllo = await DatabaseHelper().initDbBlPagamentiBatch(batch);
         contBLPG.value = contBLPG.value + batch.length;
-        batch.clear(); // Svuota il batch dopo l'inserimento
-        if (controllo == 'ok') {
-          // stato[stato.length - 1] = '${contBLPG.value} di ${numBLPG.value}'.obs;
-        } else {
+        batch.clear();
+        if (controllo != 'ok') {
           stato[stato.length - 1] = controllo.obs;
         }
       }
@@ -1702,13 +1900,30 @@ class ConnessioneController extends GetxController {
     }
   }
 
-  Future<void> initBL_Anagr(int mbagid, int tipoConto) async {
+  Future<void> initBL_Anagr() async {
+    // Get IMEI and password
+    final credentials = await DatabaseHelper().getIMEIAndPassword();
+    final imei = credentials['imei'] ?? '';
+    final password = credentials['password'] ?? '';
+
+    // Validate IMEI
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp
+    final timestamp = await DatabaseHelper().getMaxBLANLastEditDate();
+
     contBLAN = 0.obs;
     List<TestataBolla> batch = [];
-    /*RICHIESTA TESTATE BOLLE */
+
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/blanag/$tipoConto/$mbagid';
+    var url =
+        '${ipAddressApi.value}/initdbclient/blanag/$imei/$password/$timestamp';
     logger.i(url);
+
     try {
       dio.Response<dio.ResponseBody> response =
           await dioClient.get<dio.ResponseBody>(
@@ -1722,9 +1937,6 @@ class ConnessioneController extends GetxController {
           .transform(StreamTransformer<Uint8List, String>.fromBind((stream) =>
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
-
-      // await getNumBlAanagr(mbagid, tipoConto);
-      // stato.add('${contBLAN.value} di ${numBLAN.value}'.obs);
 
       await for (String line in stream) {
         if (line.isNotEmpty) {
@@ -1737,26 +1949,20 @@ class ConnessioneController extends GetxController {
                   await DatabaseHelper().initTestataBolleBatch(batch);
               contBLAN.value = contBLAN.value + batch.length;
               batch.clear();
-              if (controllo == 'ok') {
-                // stato[stato.length - 1] =
-                //     '${contBLAN.value} di ${numBLAN.value}'.obs;
-              } else {
+              if (controllo != 'ok') {
                 stato[stato.length - 1] = controllo.obs;
               }
             }
           } catch (e) {
             debugPrint('Errore di parsing JSON BLAN: $e');
-            // Gestisci l'errore di parsing
           }
         }
       }
       if (batch.isNotEmpty) {
         String controllo = await DatabaseHelper().initTestataBolleBatch(batch);
         contBLAN.value = contBLAN.value + batch.length;
-        batch.clear(); // Svuota il batch dopo l'inserimento
-        if (controllo == 'ok') {
-          // stato[stato.length - 1] = '${contBLAN.value} di ${numBLAN.value}'.obs;
-        } else {
+        batch.clear();
+        if (controllo != 'ok') {
           stato[stato.length - 1] = controllo.obs;
         }
       }
@@ -1766,14 +1972,32 @@ class ConnessioneController extends GetxController {
     }
   }
 
-  Future<void> initBL_Artic(int mbagid, int tipoConto) async {
+  Future<void> initBL_Artic() async {
     /*RICHIESTA RIGHE BOLLE */
     contBLAR = 0.obs;
     List<RigaBolla> batch = [];
     var dioClient = dio.Dio();
-    var url = '${ipAddressApi.value}/initdbclient/blartic/$tipoConto/$mbagid';
+
+    // Get IMEI and password using the helper method
+    final credentials = await DatabaseHelper().getIMEIAndPassword();
+    final String imei = credentials['imei'] ?? '';
+    final String password = credentials['password'] ?? '';
+
+    // Check if IMEI is valid
+    if (imei.isEmpty) {
+      debugPrint('Errore: Codice Univoco non impostato');
+      stato.add('Errore: Codice Univoco non impostato'.obs);
+      return;
+    }
+
+    // Get timestamp from the corresponding getMax function
+    final int timestamp = await DatabaseHelper().getMaxBLARLastEditDate();
+
+    var url =
+        '${ipAddressApi.value}/initdbclient/blartic/$imei/$password/$timestamp';
     logger.i(url);
     debugPrint(url);
+
     try {
       dio.Response<dio.ResponseBody> response =
           await dioClient.get<dio.ResponseBody>(
@@ -1788,9 +2012,6 @@ class ConnessioneController extends GetxController {
               stream.map((list) => utf8.decode(list, allowMalformed: true))))
           .transform(const LineSplitter());
 
-      // await getNumBlAartic(mbagid, tipoConto);
-      // stato.add('${contBLAR.value} di ${numBLAR.value}'.obs);
-
       await for (String line in stream) {
         if (line.isNotEmpty) {
           try {
@@ -1802,26 +2023,20 @@ class ConnessioneController extends GetxController {
                   await DatabaseHelper().initRigheBolleBatch(batch);
               contBLAR.value = contBLAR.value + batch.length;
               batch.clear();
-              if (controllo == 'ok') {
-                // stato[stato.length - 1] =
-                //     '${contBLAR.value} di ${numBLAR.value}'.obs;
-              } else {
+              if (controllo != 'ok') {
                 stato[stato.length - 1] = controllo.obs;
               }
             }
           } catch (e) {
             debugPrint('Errore di parsing JSON BLAR: $e');
-            // Gestisci l'errore di parsing
           }
         }
       }
       if (batch.isNotEmpty) {
         String controllo = await DatabaseHelper().initRigheBolleBatch(batch);
         contBLAR.value = contBLAR.value + batch.length;
-        batch.clear(); // Svuota il batch dopo l'inserimento
-        if (controllo == 'ok') {
-          // stato[stato.length - 1] = '${contBLAR.value} di ${numBLAR.value}'.obs;
-        } else {
+        batch.clear();
+        if (controllo != 'ok') {
           stato[stato.length - 1] = controllo.obs;
         }
       }
@@ -1831,33 +2046,105 @@ class ConnessioneController extends GetxController {
     }
   }
 
-  Future<void> getMBSoc() async {
-    var dioClient = dio.Dio();
-    final response =
-        await dioClient.get('${ipAddressApi.value}/infoInitDb/mbsoc');
-    logger.i('${ipAddressApi.value}/infoInitDb/mbsoc');
-    int mbsoc_id = jsonDecode(response.toString())['MBSC_ID'];
-    stato.add('MBSOC: $mbsoc_id'.obs);
+  Future<bool> getMBSoc() async {
     try {
-      await DatabaseHelper()
-          .rawUpd('UPDATE SP_Param SET SPPA_MBSC_ID=?', [mbsoc_id]);
+      // Get IMEI and password from database
+      final credentials = await DatabaseHelper().getIMEIAndPassword();
+      final imei = credentials['imei'];
+      final password = credentials['password'];
+
+      // Check if IMEI is valid
+      if (imei == null || imei.isEmpty) {
+        debugPrint('Errore: Codice Univoco non impostato');
+        stato.add('Errore: Codice Univoco non impostato'.obs);
+        return false;
+      }
+
+      var dioClient = dio.Dio();
+      final apiUrl = '${ipAddressApi.value}/infoInitDb/mbsoc/$imei/$password';
+      final response = await dioClient.get(apiUrl);
+      logger.i(apiUrl);
+
+      // Check if response contains valid data
+      if (response.data == null) {
+        debugPrint('Errore: Codice Univoco o Password non validi');
+        stato.add('Errore: Codice Univoco o Password non validi'.obs);
+        return false;
+      }
+
+      final responseData = jsonDecode(response.toString());
+      if (responseData == null || !responseData.containsKey('MBSC_ID')) {
+        debugPrint('Errore: Risposta API non valida per MBSOC');
+        stato.add('Errore: Risposta API non valida per MBSOC'.obs);
+        return false;
+      }
+
+      int mbsoc_id = responseData['MBSC_ID'];
+      stato.add('MBSOC: $mbsoc_id'.obs);
+
+      try {
+        await DatabaseHelper()
+            .rawUpd('UPDATE SP_Param SET SPPA_MBSC_ID=?', [mbsoc_id]);
+        return true;
+      } catch (e) {
+        logger.e('Errore durante l\'aggiornamento MBSOC: $e');
+        return false;
+      }
     } catch (e) {
-      logger.e('Errore durante l\'aggiornamento MBSOC: $e');
+      logger.e('Errore durante la chiamata API per MBSOC: $e');
+      stato.add('Errore durante la chiamata API per MBSOC: $e'.obs);
+      return false;
     }
   }
 
-  Future<void> getMBDiv() async {
-    var dioClient = dio.Dio();
-    final response =
-        await dioClient.get('${ipAddressApi.value}/infoInitDb/mbdiv');
-    logger.i('${ipAddressApi.value}/infoInitDb/mbdiv');
-    int mbdiv_id = jsonDecode(response.toString())['MBDV_Id'];
-    stato.add('MBDIV: $mbdiv_id'.obs);
+  Future<bool> getMBDiv() async {
     try {
-      await DatabaseHelper()
-          .rawUpd('UPDATE SP_Param SET SPPA_MBDV_ID=?', [mbdiv_id]);
+      // Get IMEI and password from database
+      final credentials = await DatabaseHelper().getIMEIAndPassword();
+      final imei = credentials['imei'];
+      final password = credentials['password'];
+
+      // Check if IMEI is valid
+      if (imei == null || imei.isEmpty) {
+        debugPrint('Errore: Codice Univoco non impostato');
+        stato.add('Errore: Codice Univoco non impostato'.obs);
+        return false;
+      }
+
+      var dioClient = dio.Dio();
+      final apiUrl = '${ipAddressApi.value}/infoInitDb/mbdiv/$imei/$password';
+      final response = await dioClient.get(apiUrl);
+      logger.i(apiUrl);
+
+      // Check if response contains valid data
+      if (response.data == null) {
+        debugPrint('Errore: Codice Univoco o Password non validi');
+        stato.add('Errore: Codice Univoco o Password non validi'.obs);
+        return false;
+      }
+
+      final responseData = jsonDecode(response.toString());
+      if (responseData == null || !responseData.containsKey('MBDV_Id')) {
+        debugPrint('Errore: Risposta API non valida per MBDIV');
+        stato.add('Errore: Risposta API non valida per MBDIV'.obs);
+        return false;
+      }
+
+      int mbdiv_id = responseData['MBDV_Id'];
+      stato.add('MBDIV: $mbdiv_id'.obs);
+
+      try {
+        await DatabaseHelper()
+            .rawUpd('UPDATE SP_Param SET SPPA_MBDV_ID=?', [mbdiv_id]);
+        return true;
+      } catch (e) {
+        logger.e('Errore durante l\'aggiornamento MBDIV: $e');
+        return false;
+      }
     } catch (e) {
-      logger.e('Errore durante l\'aggiornamento MBSOC: $e');
+      logger.e('Errore durante la chiamata API per MBDIV: $e');
+      stato.add('Errore durante la chiamata API per MBDIV: $e'.obs);
+      return false;
     }
   }
 
